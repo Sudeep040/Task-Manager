@@ -256,6 +256,14 @@ export default function DashboardPage() {
               </svg>
               Add Task
             </button>
+
+            <Link
+              href="/profile"
+              className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 text-sm font-semibold flex items-center justify-center hover:bg-indigo-200 transition-colors shrink-0"
+              title="My Profile"
+            >
+              {project?.members?.find(m => m.email === (typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}").email : ""))?.name?.charAt(0).toUpperCase() ?? "U"}
+            </Link>
           </div>
         </div>
 

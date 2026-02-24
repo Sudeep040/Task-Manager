@@ -105,6 +105,16 @@ export const api = {
     if (projectId) qs.set("projectId", projectId);
     return apiFetch<{ tasks: Task[]; comments: Comment[]; query: string }>(`/api/search?${qs}`);
   },
+  profile: {
+    get: () => apiFetch<UserProfile>("/api/profile"),
+    update: (body: { name?: string; avatarUrl?: string }) =>
+      apiFetch<UserProfile>("/api/profile", { method: "PATCH", body: JSON.stringify(body) }),
+    changePassword: (body: { currentPassword: string; newPassword: string }) =>
+      apiFetch<{ message: string }>("/api/profile/password", {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+  },
 };
 
 // Lightweight local types for the client
@@ -147,4 +157,14 @@ export interface UserShort {
   _id: string;
   name: string;
   email: string;
+}
+
+export interface UserProfile {
+  _id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+  lastActiveAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }

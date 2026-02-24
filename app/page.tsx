@@ -101,12 +101,12 @@ export default function HomePage() {
 
           <div className="flex items-center gap-3">
             {user && (
-              <div className="flex items-center gap-2">
+              <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center justify-center">
                   {user.name.charAt(0).toUpperCase()}
                 </div>
                 <span className="text-sm text-gray-700 hidden sm:block">{user.name}</span>
-              </div>
+              </Link>
             )}
             <button
               onClick={handleLogout}
