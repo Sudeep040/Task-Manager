@@ -25,9 +25,15 @@ export function signToken(payload: JwtPayload): string {
 
 export function verifyToken(token: string): JwtPayload {
   const secret = getJwtSecret();
-  const decoded = jwt.verify(token, secret);
-  if (typeof decoded === "string") throw new Error("Invalid token");
-  return decoded as JwtPayload;
+   try {
+    const decoded = jwt.verify(token, secret);
+     if (typeof decoded === "string") throw new Error("Invalid token");
+    return decoded as JwtPayload;
+  } catch (err) {
+    // Log verification error for easier debugging on the server
+    console.error("[JWT Verify Error]", err instanceof Error ? err.message : err);
+    throw err;
+  }
 }
 
 export function extractBearerToken(authHeader: string | null): string | null {

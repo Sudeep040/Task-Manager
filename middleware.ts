@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { extractBearerToken, verifyToken } from "@/lib/auth/jwt";
+import { extractBearerToken } from "@/lib/auth/jwt";
+import { jwtVerify } from "jose";
 
 const PUBLIC_API_ROUTES = ["/api/auth/register", "/api/auth/login"];
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (!pathname.startsWith("/api/")) return NextResponse.next();
@@ -18,7 +19,9 @@ export function middleware(req: NextRequest) {
   }
 
   try {
-    verifyToken(token);
+    // Use Web Crypto-compatible verification for Edge runtime via 'jose'
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET ?? "");
+    await jwtVerify(token, secret);
     return NextResponse.next();
   } catch {
     return NextResponse.json(
