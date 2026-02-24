@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, Project, TaskWithProject } from "@/lib/api-client";
+import { TaskModal } from "@/components/TaskModal";
 
 const STATUS_COLORS: Record<string, string> = {
   todo: "bg-gray-100 text-gray-600",
@@ -40,6 +41,7 @@ export default function HomePage() {
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [selectedTask, setSelectedTask] = useState<TaskWithProject | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -295,12 +297,12 @@ export default function HomePage() {
  
                       {/* Actions */}
                       <td className="px-4 py-3">
-                        <Link
-                          href={`/dashboard/${task.projectId}`}
+                        <button
+                          onClick={() => setSelectedTask(task)}
                           className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 transition-colors"
                         >
                           View
-                        </Link>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -451,6 +453,21 @@ export default function HomePage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Task detail modal (home page) */}
+      {selectedTask && (
+        <TaskModal
+          task={selectedTask}
+          projectMembers={projects.find((p) => p._id === selectedTask.projectId)?.members ?? []}
+          currentUserId={(typeof window !== "undefined" && JSON.parse(localStorage.getItem("user") || "{}")?.id) ?? ""}
+          projectOwnerId={projects.find((p) => p._id === selectedTask.projectId)?.owner._id ?? ""}
+          onClose={() => setSelectedTask(null)}
+          onUpdate={(updated: any) => setTasks((prev: any[]) => prev.map((t) => (t._id === updated._id ? updated : t)))}
+          onDelete={(id: string) => setTasks((prev: any[]) => prev.filter((t) => t._id !== id))}
+          newComment={undefined}
+          onlineUserIds={new Set()}
+        />
       )}
     </div>
   );

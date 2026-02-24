@@ -418,12 +418,12 @@ export default function DashboardPage() {
                         </td>
 
                         <td className="px-4 py-3">
-                          <button
-                            onClick={() => setSelectedTask(task)}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 transition-colors"
-                          >
-                            View
-                          </button>
+                        <button
+                          onClick={() => setSelectedTask(task)}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 transition-colors"
+                        >
+                          View
+                        </button>
                         </td>
                       </tr>
                     );
