@@ -1,17 +1,11 @@
 import { NextRequest } from "next/server";
 import mongoose from "mongoose";
-import { z } from "zod";
 import { connectDB } from "@/lib/db/connect";
 import Task from "@/lib/db/models/Task";
 import Comment from "@/lib/db/models/Comment";
 import Project from "@/lib/db/models/Project";
+import { searchQuerySchema } from "@/lib/validation/search.schema";
 import { apiSuccess, apiError, getAuthUser, ApiError } from "@/lib/api-helpers";
-
-const searchQuerySchema = z.object({
-  q: z.string().min(1, "Search query is required").max(200).trim(),
-  projectId: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(50).default(20),
-});
 
 export async function GET(req: NextRequest) {
   try {

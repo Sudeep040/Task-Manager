@@ -1,18 +1,14 @@
 import { NextRequest } from "next/server";
 import mongoose from "mongoose";
-import { z } from "zod";
 import { connectDB } from "@/lib/db/connect";
 import Project from "@/lib/db/models/Project";
 import User from "@/lib/db/models/User";
+import { memberSchema } from "@/lib/validation/member.schema";
 import { apiSuccess, apiError, getAuthUser, ApiError } from "@/lib/api-helpers";
 
 interface Params {
   params: Promise<{ projectId: string }>;
 }
-
-const memberSchema = z.object({
-  email: z.string().email("Valid email required"),
-});
 
 export async function POST(req: NextRequest, { params }: Params) {
   try {

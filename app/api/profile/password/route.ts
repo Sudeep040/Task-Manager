@@ -1,14 +1,9 @@
 import { NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
-import { z } from "zod";
 import { connectDB } from "@/lib/db/connect";
 import User from "@/lib/db/models/User";
+import { changePasswordSchema } from "@/lib/validation/profile.schema";
 import { apiSuccess, apiError, getAuthUser, ApiError } from "@/lib/api-helpers";
-
-const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required"),
-  newPassword: z.string().min(8, "New password must be at least 8 characters"),
-});
 
 export async function PATCH(req: NextRequest) {
   try {

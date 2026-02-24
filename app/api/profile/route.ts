@@ -1,13 +1,8 @@
 import { NextRequest } from "next/server";
-import { z } from "zod";
 import { connectDB } from "@/lib/db/connect";
 import User from "@/lib/db/models/User";
+import { updateProfileSchema } from "@/lib/validation/profile.schema";
 import { apiSuccess, apiError, getAuthUser } from "@/lib/api-helpers";
-
-const updateProfileSchema = z.object({
-  name: z.string().min(1, "Name is required").max(100).trim().optional(),
-  avatarUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-});
 
 export async function GET(req: NextRequest) {
   try {
