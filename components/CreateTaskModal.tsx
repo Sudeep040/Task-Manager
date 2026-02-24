@@ -69,7 +69,7 @@ export function CreateTaskModal({ projectId, onClose, onCreated }: CreateTaskMod
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="Task title"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full border text-gray-700 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
             />
           </div>
 
@@ -80,7 +80,7 @@ export function CreateTaskModal({ projectId, onClose, onCreated }: CreateTaskMod
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="Optional description..."
               rows={3}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+              className="w-full border text-gray-700 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
             />
           </div>
 
@@ -90,7 +90,7 @@ export function CreateTaskModal({ projectId, onClose, onCreated }: CreateTaskMod
               <select
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="w-full border text-gray-700 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
               >
                 <option value={1}>Critical</option>
                 <option value={2}>High</option>
@@ -106,7 +106,7 @@ export function CreateTaskModal({ projectId, onClose, onCreated }: CreateTaskMod
                 type="date"
                 value={form.dueAt}
                 onChange={(e) => setForm({ ...form, dueAt: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="w-full text-gray-700 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
               />
             </div>
           </div>

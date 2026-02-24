@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { connectDB } from "@/lib/db/connect";
 import Project from "@/lib/db/models/Project";
+// Ensure User model is registered so populate('owner'|'members') works
+import "@/lib/db/models/User";
 import { createProjectSchema } from "@/lib/validation/task.schema";
 import { apiSuccess, apiError, getAuthUser } from "@/lib/api-helpers";
 

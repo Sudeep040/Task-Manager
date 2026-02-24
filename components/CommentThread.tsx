@@ -59,7 +59,7 @@
     <div className="flex flex-col gap-4">
       <form onSubmit={handleSubmit} className="flex gap-2">
         <input
-          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          className="flex-1 border text-gray-700 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
           placeholder="Add a comment..."
           value={body}
           onChange={(e) => setBody(e.target.value)}
