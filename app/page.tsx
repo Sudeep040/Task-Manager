@@ -234,7 +234,7 @@ export default function HomePage() {
         {!loading && projects.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((project) => (
-              <div
+               <div
                 key={project._id}
                 className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-indigo-200 transition-all group flex flex-col"
               >
@@ -242,14 +242,14 @@ export default function HomePage() {
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className={`w-9 h-9 ${projectColor(project._id)} rounded-lg flex items-center justify-center shrink-0`}>
                       <span className="text-white text-sm font-bold">
-                        {project.name.charAt(0).toUpperCase()}
+                        {project?.name.charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <h2 className="font-semibold text-gray-900 truncate text-sm leading-tight">
-                      {project.name}
+                      {project?.name}
                     </h2>
                   </div>
-                  {project.owner._id === user?.id && (
+                  {project?.owner._id === user?.id && (
                     <button
                       onClick={() => handleDelete(project._id)}
                       disabled={deletingId === project._id}
@@ -272,24 +272,24 @@ export default function HomePage() {
 
                 {project.description && (
                   <p className="text-xs text-gray-500 mb-3 line-clamp-2 leading-relaxed">
-                    {project.description}
+                    {project?.description}
                   </p>
                 )}
 
                 <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between">
                   <div className="flex items-center gap-1">
-                    {project.members.slice(0, 4).map((m, i) => (
+                    {project?.members?.slice(0, 4).map((m, i) => (
                       <div
                         key={m._id}
                         className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center justify-center ring-2 ring-white"
                         style={{ marginLeft: i > 0 ? "-6px" : "0" }}
                         title={m.name}
                       >
-                        {m.name.charAt(0).toUpperCase()}
+                        {m.name?.charAt(0).toUpperCase()}
                       </div>
                     ))}
-                    {project.members.length > 4 && (
-                      <span className="text-xs text-gray-400 ml-1">+{project.members.length - 4}</span>
+                    {project?.members?.length > 4 && (
+                      <span className="text-xs text-gray-400 ml-1">+{project?.members?.length - 4}</span>
                     )}
                   </div>
                   <Link

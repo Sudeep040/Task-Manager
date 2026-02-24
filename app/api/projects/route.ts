@@ -39,7 +39,11 @@ export async function POST(req: NextRequest) {
       members: [user.userId],
     });
 
-    const populated = await project.populate("owner", "name email");
+    // populate both owner and members so client receives full member objects (not just IDs)
+    const populated = await project.populate([
+      { path: "owner", select: "name email" },
+      { path: "members", select: "name email" },
+    ]);
 
     return apiSuccess(populated, 201);
   } catch (error) {

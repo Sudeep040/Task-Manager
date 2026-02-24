@@ -63,6 +63,14 @@ export const api = {
       );
     },
   },
+  users: {
+    list: (params?: { q?: string; projectId?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.q) qs.set("q", params.q);
+      if (params?.projectId) qs.set("projectId", params.projectId);
+      return apiFetch<UserShort[]>(`/api/users?${qs}`);
+    },
+  },
   tasks: {
     create: (projectId: string, body: Partial<Task>) =>
       apiFetch<Task>(`/api/projects/${projectId}/tasks`, {
@@ -133,4 +141,11 @@ export interface Comment {
   body: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// Short user shape used by client
+export interface UserShort {
+  _id: string;
+  name: string;
+  email: string;
 }

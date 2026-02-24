@@ -25,9 +25,11 @@ export default function DashboardPage() {
   const [searchQ, setSearchQ] = useState("");
   const [searchResults, setSearchResults] = useState<Task[] | null>(null);
   const [newComment, setNewComment] = useState<Comment | undefined>(undefined);
-  const [addMemberEmail, setAddMemberEmail] = useState("");
   const [addingMember, setAddingMember] = useState(false);
   const [memberError, setMemberError] = useState("");
+  const [availableUsers, setAvailableUsers] = useState<{ _id: string; name: string; email: string }[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   const handleTaskCreated = useCallback((task: unknown) => {
     setTasks((prev) => {
@@ -126,15 +128,58 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleAddMember(e: React.FormEvent) {
+  // legacy email-based add (kept for reference) — removed in favor of selection-based add
+
+  // Fetch available users (exclude current project members)
+  useEffect(() => {
+    let cancelled = false;
+    async function loadUsers() {
+      if (!project) {
+        setAvailableUsers([]);
+        return;
+      }
+      setLoadingUsers(true);
+      try {
+        const users = await api.users.list({ projectId });
+        if (cancelled) return;
+        // users returns array of { _id, name, email }
+        // ensure we don't include current members (server already excludes, but double-check)
+        const filtered = (users as { _id: string; name: string; email: string }[]).filter(
+          (u) => !project.members.some((m) => m._id === u._id)
+        );
+        setAvailableUsers(filtered);
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setLoadingUsers(false);
+      }
+    }
+    loadUsers();
+    return () => {
+      cancelled = true;
+    };
+  }, [project, projectId]);
+
+  async function handleAddMemberById(e: React.FormEvent) {
     e.preventDefault();
     setMemberError("");
-    if (!addMemberEmail.trim()) return;
+    if (!selectedUserId) {
+      setMemberError("Select a user to add");
+      return;
+    }
     setAddingMember(true);
     try {
-      const updated = await api.projects.addMember(projectId, addMemberEmail.trim());
+      const user = availableUsers.find((u) => u._id === selectedUserId);
+      if (!user) throw new Error("User not found");
+      const updated = await api.projects.addMember(projectId, user.email);
       setProject(updated);
-      setAddMemberEmail("");
+      // notify other pages/components about the updated project so they can refresh UI
+      try {
+        window.dispatchEvent(new CustomEvent("project:members:updated", { detail: updated }));
+      } catch {
+        // ignore (server-side or non-browser)
+      }
+      setSelectedUserId("");
     } catch (err) {
       setMemberError(err instanceof Error ? err.message : "Failed to add member");
     } finally {
@@ -271,17 +316,22 @@ export default function DashboardPage() {
                     </span>
                   ))}
                 </div>
-                <form onSubmit={handleAddMember} className="flex gap-2 max-w-sm">
-                  <input
-                    type="email"
-                    placeholder="Add member by email"
-                    value={addMemberEmail}
-                    onChange={(e) => setAddMemberEmail(e.target.value)}
+                <form onSubmit={handleAddMemberById} className="flex gap-2 max-w-sm">
+                  <select
+                    value={selectedUserId}
+                    onChange={(e) => setSelectedUserId(e.target.value)}
                     className="flex-1 border border-gray-200 text-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                  />
+                  >
+                    <option value="">{loadingUsers ? "Loading users..." : "Select a user to add"}</option>
+                    {availableUsers.map((u) => (
+                      <option key={u._id} value={u._id}>
+                        {u.name} 
+                      </option>
+                    ))}
+                  </select>
                   <button
                     type="submit"
-                    disabled={addingMember}
+                    disabled={addingMember || !selectedUserId}
                     className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                   >
                     {addingMember ? "..." : "Add"}
