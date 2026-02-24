@@ -57,7 +57,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     task.assignees.push(new mongoose.Types.ObjectId(userId));
     await task.save();
 
-    const populated = await task.populate("assignees", "name email");
+    const populated = await task.populate([
+      { path: "assignees", select: "name email" },
+      { path: "createdBy", select: "name email" },
+    ]);
     await emitToProject(task.projectId.toString(), EVENTS.TASK_UPDATED, populated.toObject());
 
     return apiSuccess(populated);

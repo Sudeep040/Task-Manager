@@ -72,13 +72,13 @@ export const api = {
     },
   },
   tasks: {
-    create: (projectId: string, body: Partial<Task>) =>
+    create: (projectId: string, body: CreateTaskBody) =>
       apiFetch<Task>(`/api/projects/${projectId}/tasks`, {
         method: "POST",
         body: JSON.stringify(body),
       }),
     get: (id: string) => apiFetch<Task>(`/api/tasks/${id}`),
-    update: (id: string, body: Partial<Task>) =>
+    update: (id: string, body: UpdateTaskBody) =>
       apiFetch<Task>(`/api/tasks/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
     delete: (id: string) =>
       apiFetch<{ deleted: boolean }>(`/api/tasks/${id}`, { method: "DELETE" }),
@@ -141,6 +141,22 @@ export interface Task {
   createdBy: { _id: string; name: string; email: string };
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CreateTaskBody {
+  title: string;
+  description?: string;
+  status?: Task["status"];
+  assignees?: string[];
+  priority?: number;
+}
+
+export interface UpdateTaskBody {
+  title?: string;
+  description?: string;
+  status?: Task["status"];
+  assignees?: string[];
+  priority?: number;
 }
 
 export interface Comment {

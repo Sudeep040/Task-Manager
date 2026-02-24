@@ -400,6 +400,7 @@ export default function DashboardPage() {
       {selectedTask && (
         <TaskModal
           task={selectedTask}
+          projectMembers={project?.members ?? []}
           onClose={() => { setSelectedTask(null); setNewComment(undefined); }}
           onUpdate={(updated) => {
             setTasks((prev) => prev.map((t) => (t._id === updated._id ? updated : t)));
@@ -417,6 +418,7 @@ export default function DashboardPage() {
       {showCreate && (
         <CreateTaskModal
           projectId={projectId}
+          members={project?.members ?? []}
           onClose={() => setShowCreate(false)}
           onCreated={(task) => setTasks((prev) => [task, ...prev])}
         />

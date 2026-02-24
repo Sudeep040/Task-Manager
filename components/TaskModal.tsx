@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Task, Comment, api } from "@/lib/api-client";
 import { CommentThread } from "./CommentThread";
 
 interface TaskModalProps {
   task: Task;
+  projectMembers: { _id: string; name: string; email: string }[];
   onClose: () => void;
   onUpdate: (task: Task) => void;
   onDelete: (taskId: string) => void;
@@ -14,11 +15,20 @@ interface TaskModalProps {
 
 const STATUSES: Task["status"][] = ["todo", "in_progress", "done", "archived"];
 
-export function TaskModal({ task, onClose, onUpdate, onDelete, newComment }: TaskModalProps) {
+export function TaskModal({ task, projectMembers, onClose, onUpdate, onDelete, newComment }: TaskModalProps) {
   const [status, setStatus] = useState<Task["status"]>(task.status);
   const [saving, setSaving] = useState(false);
   const [priority, setPriority] = useState<number>(task.priority);
   const [deleting, setDeleting] = useState(false);
+  const [assigneeActionId, setAssigneeActionId] = useState<string | null>(null);
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState<string>("");
+
+  const availableAssignees = useMemo(() => {
+    const assigned = new Set(task.assignees.map((a) => a._id));
+    return [...projectMembers]
+      .filter((m) => !assigned.has(m._id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [projectMembers, task.assignees]);
 
   async function handleStatusChange(newStatus: Task["status"]) {
     setStatus(newStatus);
@@ -62,6 +72,32 @@ export function TaskModal({ task, onClose, onUpdate, onDelete, newComment }: Tas
       console.error(err);
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleAssign(userId: string) {
+    if (!userId) return;
+    setAssigneeActionId(userId);
+    try {
+      const updated = await api.tasks.assign(task._id, userId);
+      onUpdate(updated);
+      setSelectedAssigneeId("");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAssigneeActionId(null);
+    }
+  }
+
+  async function handleUnassign(userId: string) {
+    setAssigneeActionId(userId);
+    try {
+      const updated = await api.tasks.unassign(task._id, userId);
+      onUpdate(updated);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAssigneeActionId(null);
     }
   }
 
@@ -127,12 +163,15 @@ export function TaskModal({ task, onClose, onUpdate, onDelete, newComment }: Tas
           </div>
 
           {/* Assignees */}
-          {task.assignees.length > 0 && (
-            <div>
-              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                Assignees
-              </label>
-              <div className="flex flex-wrap gap-2">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+              Assignees
+            </label>
+
+            {task.assignees.length === 0 ? (
+              <p className="text-sm text-gray-400">No assignees yet.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2 mb-3">
                 {task.assignees.map((a) => (
                   <span
                     key={a._id}
@@ -141,12 +180,54 @@ export function TaskModal({ task, onClose, onUpdate, onDelete, newComment }: Tas
                     <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center">
                       {a.name.charAt(0).toUpperCase()}
                     </span>
-                    {a.name}
+                    <span>{a.name}</span>
+                    <button
+                      onClick={() => handleUnassign(a._id)}
+                      disabled={assigneeActionId === a._id}
+                      title="Unassign"
+                      className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full text-indigo-700/70 hover:bg-indigo-100 disabled:opacity-50 transition-colors"
+                    >
+                      {assigneeActionId === a._id ? (
+                        <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                    </button>
                   </span>
                 ))}
               </div>
+            )}
+
+            <div className="flex gap-2">
+              <select
+                value={selectedAssigneeId}
+                onChange={(e) => setSelectedAssigneeId(e.target.value)}
+                className="flex-1 px-3 py-2 text-gray-700 rounded-lg text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              >
+                <option value="">
+                  {availableAssignees.length === 0 ? "No available members to assign" : "Select member to assign"}
+                </option>
+                {availableAssignees.map((m) => (
+                  <option key={m._id} value={m._id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => handleAssign(selectedAssigneeId)}
+                disabled={!selectedAssigneeId || assigneeActionId !== null}
+                className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                Assign
+              </button>
             </div>
-          )}
+          </div>
 
           {/* Meta info */}
           <div className="text-sm text-gray-600">

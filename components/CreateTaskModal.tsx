@@ -1,22 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { api, Task } from "@/lib/api-client";
 
 interface CreateTaskModalProps {
   projectId: string;
+  members: { _id: string; name: string; email: string }[];
   onClose: () => void;
   onCreated: (task: Task) => void;
 }
 
-export function CreateTaskModal({ projectId, onClose, onCreated }: CreateTaskModalProps) {
+export function CreateTaskModal({ projectId, members, onClose, onCreated }: CreateTaskModalProps) {
   const [form, setForm] = useState({
     title: "",
     description: "",
     priority: 3,
   });
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const sortedMembers = useMemo(() => {
+    return [...members].sort((a, b) => a.name.localeCompare(b.name));
+  }, [members]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,6 +37,7 @@ export function CreateTaskModal({ projectId, onClose, onCreated }: CreateTaskMod
         title: form.title.trim(),
         description: form.description.trim() || undefined,
         priority: form.priority,
+        assignees: assigneeIds,
       });
       onCreated(task);
       onClose();
@@ -95,6 +102,41 @@ export function CreateTaskModal({ projectId, onClose, onCreated }: CreateTaskMod
               <option value={4}>Low</option>
               <option value={5}>Minimal</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Assignees <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            {sortedMembers.length === 0 ? (
+              <p className="text-sm text-gray-400">No project members found.</p>
+            ) : (
+              <div className="max-h-40 overflow-auto border border-gray-200 rounded-lg p-2 space-y-1">
+                {sortedMembers.map((m) => {
+                  const checked = assigneeIds.includes(m._id);
+                  return (
+                    <label
+                      key={m._id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          setAssigneeIds((prev) =>
+                            prev.includes(m._id) ? prev.filter((id) => id !== m._id) : [...prev, m._id]
+                          );
+                        }}
+                      />
+                      <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center justify-center">
+                        {m.name.charAt(0).toUpperCase()}
+                      </span>
+                      <span className="text-sm text-gray-700">{m.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3 pt-2">
