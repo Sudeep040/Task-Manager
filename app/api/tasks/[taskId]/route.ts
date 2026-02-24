@@ -58,11 +58,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const body = await req.json();
     const updates = updateTaskSchema.parse(body);
 
-    if (updates.dueAt === null) {
-      task.dueAt = undefined;
-    } else if (updates.dueAt) {
-      task.dueAt = new Date(updates.dueAt);
-    }
+    // dueAt removed
     if (updates.title !== undefined) task.title = updates.title;
     if (updates.description !== undefined) task.description = updates.description;
     if (updates.status !== undefined) task.status = updates.status;

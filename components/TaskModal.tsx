@@ -113,13 +113,7 @@ export function TaskModal({ task, onClose, onUpdate, onDelete, newComment }: Tas
           )}
 
           {/* Meta info */}
-          <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-            {task.dueAt && (
-              <div>
-                <span className="text-xs text-gray-400 uppercase tracking-wide block mb-0.5">Due</span>
-                {new Date(task.dueAt).toLocaleDateString()}
-              </div>
-            )}
+          <div className="text-sm text-gray-600">
             <div>
               <span className="text-xs text-gray-400 uppercase tracking-wide block mb-0.5">Created</span>
               {new Date(task.createdAt).toLocaleDateString()}

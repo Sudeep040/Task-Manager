@@ -14,7 +14,6 @@ export function CreateTaskModal({ projectId, onClose, onCreated }: CreateTaskMod
     title: "",
     description: "",
     priority: 3,
-    dueAt: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -32,7 +31,6 @@ export function CreateTaskModal({ projectId, onClose, onCreated }: CreateTaskMod
         title: form.title.trim(),
         description: form.description.trim() || undefined,
         priority: form.priority,
-        dueAt: form.dueAt || undefined,
       });
       onCreated(task);
       onClose();
@@ -84,31 +82,19 @@ export function CreateTaskModal({ projectId, onClose, onCreated }: CreateTaskMod
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-              <select
-                value={form.priority}
-                onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })}
-                className="w-full border text-gray-700 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-              >
-                <option value={1}>Critical</option>
-                <option value={2}>High</option>
-                <option value={3}>Medium</option>
-                <option value={4}>Low</option>
-                <option value={5}>Minimal</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Due date</label>
-              <input
-                type="date"
-                value={form.dueAt}
-                onChange={(e) => setForm({ ...form, dueAt: e.target.value })}
-                className="w-full text-gray-700 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+            <select
+              value={form.priority}
+              onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })}
+              className="w-full border text-gray-700 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            >
+              <option value={1}>Critical</option>
+              <option value={2}>High</option>
+              <option value={3}>Medium</option>
+              <option value={4}>Low</option>
+              <option value={5}>Minimal</option>
+            </select>
           </div>
 
           <div className="flex gap-3 pt-2">

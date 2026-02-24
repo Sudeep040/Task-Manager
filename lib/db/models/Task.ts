@@ -10,7 +10,6 @@ export interface ITask extends Document {
   status: TaskStatus;
   assignees: mongoose.Types.ObjectId[];
   priority: number;
-  dueAt?: Date;
   commentCount: number;
   lastCommentAt?: Date;
   createdBy: mongoose.Types.ObjectId;
@@ -30,7 +29,6 @@ const TaskSchema = new Schema<ITask>(
     },
     assignees: [{ type: Schema.Types.ObjectId, ref: "User" }],
     priority: { type: Number, default: 3, min: 1, max: 5 },
-    dueAt: { type: Date },
     commentCount: { type: Number, default: 0 },
     lastCommentAt: { type: Date },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },

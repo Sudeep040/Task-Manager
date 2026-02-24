@@ -37,7 +37,6 @@ export async function POST(req: NextRequest, { params }: Params) {
       ...data,
       projectId,
       createdBy: user.userId,
-      dueAt: data.dueAt ? new Date(data.dueAt) : undefined,
     });
 
     const populated = await task.populate([

@@ -126,7 +126,6 @@ export interface Task {
   status: "todo" | "in_progress" | "done" | "archived";
   assignees: { _id: string; name: string; email: string }[];
   priority: number;
-  dueAt?: string;
   commentCount: number;
   lastCommentAt?: string;
   createdBy: { _id: string; name: string; email: string };
