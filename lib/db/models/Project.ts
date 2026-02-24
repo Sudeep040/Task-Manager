@@ -22,7 +22,11 @@ const ProjectSchema = new Schema<IProject>(
 
 ProjectSchema.index({ owner: 1 });
 ProjectSchema.index({ members: 1 });
-ProjectSchema.index({ _id: 1, updatedAt: -1 });
+// Fast "my projects" listing (supports sort by updatedAt)
+ProjectSchema.index({ owner: 1, updatedAt: -1 });
+ProjectSchema.index({ members: 1, updatedAt: -1 });
+// Fallback for generic recency sorts
+ProjectSchema.index({ updatedAt: -1 });
 
 const Project: Model<IProject> =
   mongoose.models.Project ?? mongoose.model<IProject>("Project", ProjectSchema);

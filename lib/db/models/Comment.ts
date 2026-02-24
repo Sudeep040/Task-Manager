@@ -22,7 +22,11 @@ CommentSchema.index({ taskId: 1, createdAt: -1 });
 CommentSchema.index({ authorId: 1 });
 
 // Text index for global search
-CommentSchema.index({ body: "text" });
+// Search is filtered by taskId set; include `taskId` for faster scoped text search
+CommentSchema.index({ taskId: 1, body: "text" });
+
+// Cursor pagination uses `{ createdAt: -1, _id: -1 }` sort
+CommentSchema.index({ taskId: 1, createdAt: -1, _id: -1 });
 
 const Comment: Model<IComment> =
   mongoose.models.Comment ?? mongoose.model<IComment>("Comment", CommentSchema);

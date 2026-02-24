@@ -37,12 +37,14 @@ const TaskSchema = new Schema<ITask>(
 );
 
 // Compound indexes for dashboard queries
-TaskSchema.index({ projectId: 1, status: 1, updatedAt: -1 });
-TaskSchema.index({ projectId: 1, assignees: 1, updatedAt: -1 });
-TaskSchema.index({ projectId: 1, updatedAt: -1 });
+// Include `_id` as a tiebreaker to match pagination sort `{ updatedAt: -1, _id: -1 }`
+TaskSchema.index({ projectId: 1, status: 1, updatedAt: -1, _id: -1 });
+TaskSchema.index({ projectId: 1, assignees: 1, updatedAt: -1, _id: -1 });
+TaskSchema.index({ projectId: 1, updatedAt: -1, _id: -1 });
 
 // Text index for search
-TaskSchema.index({ title: "text", description: "text" });
+// Search is always scoped to a project (or set of projects), so include `projectId`
+TaskSchema.index({ projectId: 1, title: "text", description: "text" });
 
 const Task: Model<ITask> =
   mongoose.models.Task ?? mongoose.model<ITask>("Task", TaskSchema);
