@@ -30,8 +30,16 @@ export const POST = withAuth(async (req: NextRequest, { params }: Params) => {
   const body = await req.json();
   const data = createTaskSchema.parse(body);
 
+  const assignees = (data.assignees ?? []).map((id: string) => new mongoose.Types.ObjectId(id));
+  const dueAt = data.dueAt ? new Date(data.dueAt) : undefined;
+
   const task = await Task.create({
-    ...data,
+    title: data.title,
+    description: data.description,
+    status: data.status,
+    assignees,
+    priority: data.priority,
+    dueAt,
     projectId,
     createdBy: user.userId,
   });

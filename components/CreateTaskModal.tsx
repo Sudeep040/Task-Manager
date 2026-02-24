@@ -17,6 +17,7 @@ export function CreateTaskModal({ projectId, members, onClose, onCreated }: Crea
     priority: 3,
   });
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
+  const [dueAt, setDueAt] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -38,6 +39,7 @@ export function CreateTaskModal({ projectId, members, onClose, onCreated }: Crea
         description: form.description.trim() || undefined,
         priority: form.priority,
         assignees: assigneeIds,
+        dueAt: dueAt || undefined,
       });
       onCreated(task);
       onClose();
@@ -102,6 +104,16 @@ export function CreateTaskModal({ projectId, members, onClose, onCreated }: Crea
               <option value={4}>Low</option>
               <option value={5}>Minimal</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Due date</label>
+            <input
+              type="date"
+              value={dueAt}
+              onChange={(e) => setDueAt(e.target.value)}
+              className="w-full border text-gray-700 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            />
           </div>
 
           <div>

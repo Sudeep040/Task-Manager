@@ -8,7 +8,7 @@ export const createTaskSchema = z.object({
   status: z.enum(taskStatuses).default("todo"),
   assignees: z.array(z.string()).optional().default([]),
   priority: z.number().int().min(1).max(5).default(3),
-  // dueAt removed
+  dueAt: z.string().optional(),
 });
 
 export const updateTaskSchema = z.object({
@@ -17,7 +17,7 @@ export const updateTaskSchema = z.object({
   status: z.enum(taskStatuses).optional(),
   assignees: z.array(z.string()).optional(),
   priority: z.number().int().min(1).max(5).optional(),
-  // dueAt removed
+  dueAt: z.string().optional(),
 });
 
 export const assignSchema = z.object({

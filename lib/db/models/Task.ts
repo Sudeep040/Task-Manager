@@ -31,6 +31,7 @@ const TaskSchema = new Schema<ITask>(
     priority: { type: Number, default: 3, min: 1, max: 5 },
     commentCount: { type: Number, default: 0 },
     lastCommentAt: { type: Date },
+    dueAt: { type: Date },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   { timestamps: true }

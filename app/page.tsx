@@ -3,73 +3,93 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, Project } from "@/lib/api-client";
+import { api, Project, TaskWithProject } from "@/lib/api-client";
+
+const STATUS_COLORS: Record<string, string> = {
+  todo: "bg-gray-100 text-gray-600",
+  in_progress: "bg-blue-100 text-blue-700",
+  done: "bg-green-100 text-green-700",
+  archived: "bg-yellow-100 text-yellow-700",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  todo: "Todo",
+  in_progress: "In Progress",
+  done: "Done",
+  archived: "Archived",
+};
+
+const PRIORITY_LABELS: Record<number, { label: string; color: string }> = {
+  1: { label: "Critical", color: "text-red-600" },
+  2: { label: "High", color: "text-orange-500" },
+  3: { label: "Medium", color: "text-yellow-600" },
+  4: { label: "Low", color: "text-blue-500" },
+  5: { label: "Minimal", color: "text-gray-400" },
+};
 
 export default function HomePage() {
   const router = useRouter();
+  const [tasks, setTasks] = useState<TaskWithProject[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<{ id: string; name: string; email: string } | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", description: "" });
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState("");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [addForm, setAddForm] = useState({ projectId: "", title: "", description: "", priority: 3 });
+  const [addAssigneeIds, setAddAssigneeIds] = useState<string[]>([]);
+  const [addDueAt, setAddDueAt] = useState<string>("");
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
 
   useEffect(() => {
-     const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    const token = localStorage.getItem("token");
+    if (!token) { router.push("/login"); return; }
     const stored = localStorage.getItem("user");
     if (stored) setUser(JSON.parse(stored));
-    loadProjects();
+    loadData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function loadProjects() {
+  async function loadData() {
     setLoading(true);
     try {
-      const data = await api.projects.list();
-      setProjects(data);
+      const [tasksRes, projectsRes] = await Promise.all([
+        api.tasks.list(),
+        api.projects.list(),
+      ]);
+      setTasks(tasksRes.tasks);
+      setProjects(projectsRes);
     } catch {
-      // token likely expired
       router.push("/login");
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleCreate(e: React.FormEvent) {
+  async function handleAddTask(e: React.FormEvent) {
     e.preventDefault();
-    setCreateError("");
-    if (!createForm.name.trim()) return;
-    setCreating(true);
+    setAddError("");
+    if (!addForm.projectId) { setAddError("Please select a project"); return; }
+    if (!addForm.title.trim()) { setAddError("Title is required"); return; }
+    setAdding(true);
     try {
-      const project = await api.projects.create({
-        name: createForm.name.trim(),
-        description: createForm.description.trim() || undefined,
+      const task = await api.tasks.create(addForm.projectId, {
+        title: addForm.title.trim(),
+        description: addForm.description.trim() || undefined,
+        priority: addForm.priority,
+        assignees: addAssigneeIds,
+        dueAt: addDueAt || undefined,
       });
-      setProjects((prev) => [project, ...prev]);
-      setCreateForm({ name: "", description: "" });
-      setShowCreate(false);
+      const project = projects.find((p) => p._id === addForm.projectId);
+      const taskWithProject: TaskWithProject = { ...task, projectName: project?.name ?? "Unknown" };
+      setTasks((prev) => [taskWithProject, ...prev]);
+      setAddForm({ projectId: "", title: "", description: "", priority: 3 });
+      setAddAssigneeIds([]);
+      setAddDueAt("");
+      setShowAddTask(false);
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "Failed to create project");
+      setAddError(err instanceof Error ? err.message : "Failed to create task");
     } finally {
-      setCreating(false);
-    }
-  }
-
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this project and all its tasks? This cannot be undone.")) return;
-    setDeletingId(id);
-    try {
-      await api.projects.delete(id);
-      setProjects((prev) => prev.filter((p) => p._id !== id));
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete project");
-    } finally {
-      setDeletingId(null);
+      setAdding(false);
     }
   }
 
@@ -79,17 +99,17 @@ export default function HomePage() {
     router.push("/login");
   }
 
-  const statusColors = ["bg-indigo-500", "bg-violet-500", "bg-sky-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500"];
-  function projectColor(id: string) {
-    const idx = id.charCodeAt(id.length - 1) % statusColors.length;
-    return statusColors[idx];
-  }
+  // Only tasks where the logged-in user is an assignee
+  const myTasks = user
+    ? tasks.filter((t) => t.assignees.some((a) => a._id === user.id))
+    : [];
+  const filtered = statusFilter ? myTasks.filter((t) => t.status === statusFilter) : myTasks;
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,7 +119,9 @@ export default function HomePage() {
             <span className="text-lg font-bold text-gray-900">TaskFlow</span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <nav className="flex items-center gap-4">
+            <Link href="/" className="text-sm font-medium text-indigo-600">My Tasks</Link>
+            <Link href="/projects" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">Projects</Link>
             {user && (
               <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center justify-center">
@@ -114,196 +136,335 @@ export default function HomePage() {
             >
               Sign out
             </button>
-          </div>
+          </nav>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
-        {/* Page title + create button */}
+      <main className="max-w-6xl mx-auto px-4 py-8">
+        {/* Page title + actions */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">My Projects</h1>
+            <h1 className="text-2xl font-bold text-gray-900">My Tasks</h1>
             <p className="text-sm text-gray-500 mt-0.5">
-              {loading ? "Loading..." : `${projects.length} project${projects.length !== 1 ? "s" : ""}`}
+              {loading
+                ? "Loading..."
+                : `${filtered.length} task${filtered.length !== 1 ? "s" : ""} assigned to you${statusFilter ? ` · ${STATUS_LABELS[statusFilter]}` : ""}`}
             </p>
           </div>
           <button
-            onClick={() => { setShowCreate(true); setCreateError(""); }}
+            onClick={() => { setShowAddTask(true); setAddError(""); }}
             className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            New Project
+            Add Task
           </button>
         </div>
 
-        {/* Create project modal */}
-        {showCreate && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Create New Project</h2>
-              <form onSubmit={handleCreate} className="space-y-4">
-                {createError && (
-                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-                    {createError}
-                  </div>
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Project Name <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    required
-                    autoFocus
-                    value={createForm.name}
-                    onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                    placeholder="e.g. Website Redesign"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description <span className="text-gray-400 font-normal">(optional)</span></label>
-                  <textarea
-                    rows={3}
-                    value={createForm.description}
-                    onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
-                    placeholder="What is this project about?"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
-                  />
-                </div>
-                <div className="flex gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreate(false)}
-                    className="flex-1 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={creating}
-                    className="flex-1 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                  >
-                    {creating ? "Creating..." : "Create Project"}
-                  </button>
-                </div>
-              </form>
-            </div>
+        {/* Status filter pills */}
+        {!loading && myTasks.length > 0 && (
+          <div className="flex gap-2 flex-wrap mb-5">
+            {["", "todo", "in_progress", "done", "archived"].map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  statusFilter === s
+                    ? "bg-indigo-600 text-white"
+                    : "bg-white border border-gray-200 text-gray-600 hover:border-indigo-300 hover:text-indigo-600"
+                }`}
+              >
+                {s === "" ? "All" : STATUS_LABELS[s]}
+              </button>
+            ))}
           </div>
         )}
 
         {/* Loading skeleton */}
         {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-9 h-9 bg-gray-200 rounded-lg" />
-                  <div className="h-4 bg-gray-200 rounded w-32" />
-                </div>
-                <div className="h-3 bg-gray-100 rounded w-full mb-2" />
-                <div className="h-3 bg-gray-100 rounded w-2/3" />
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3.5 border-b border-gray-100 animate-pulse last:border-0">
+                <div className="h-4 bg-gray-200 rounded w-1/3" />
+                <div className="h-4 bg-gray-100 rounded w-24" />
+                <div className="h-5 bg-gray-100 rounded-full w-20 ml-auto" />
+                <div className="h-4 bg-gray-100 rounded w-16" />
               </div>
             ))}
           </div>
         )}
 
-        {/* Empty state */}
-        {!loading && projects.length === 0 && (
+        {/* Empty state — not assigned to any tasks */}
+        {!loading && myTasks.length === 0 && (
           <div className="text-center py-20">
-            <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
-            <h2 className="text-lg font-semibold text-gray-800 mb-1">No projects yet</h2>
-            <p className="text-sm text-gray-500 mb-5">Create your first project to start managing tasks.</p>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Create Project
-            </button>
+            <h2 className="text-lg font-semibold text-gray-800 mb-1">No tasks assigned to you</h2>
+            <p className="text-sm text-gray-500">Tasks assigned to you will appear here.</p>
           </div>
         )}
 
-        {/* Project grid */}
-        {!loading && projects.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((project) => (
-               <div
-                key={project._id}
-                className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-indigo-200 transition-all group flex flex-col"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className={`w-9 h-9 ${projectColor(project._id)} rounded-lg flex items-center justify-center shrink-0`}>
-                      <span className="text-white text-sm font-bold">
-                        {project?.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <h2 className="font-semibold text-gray-900 truncate text-sm leading-tight">
-                      {project?.name}
-                    </h2>
-                  </div>
-                  {project?.owner._id === user?.id && (
-                    <button
-                      onClick={() => handleDelete(project._id)}
-                      disabled={deletingId === project._id}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all shrink-0 ml-1"
-                      title="Delete project"
+        {/* No results for current filter */}
+        {!loading && myTasks.length > 0 && filtered.length === 0 && (
+          <div className="text-center py-16 text-gray-400">
+            <p className="text-sm">No tasks match this filter.</p>
+          </div>
+        )}
+
+        {/* Task table */}
+        {!loading && filtered.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-[35%]">Task</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Project</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Assignees</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Priority</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Due</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Updated</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map((task) => {
+                  const priority = PRIORITY_LABELS[task.priority] ?? PRIORITY_LABELS[3];
+                  return (
+                    <tr
+                      key={task._id}
+                      className="hover:bg-indigo-50/40 transition-colors group"
                     >
-                      {deletingId === project._id ? (
-                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      )}
-                    </button>
-                  )}
-                </div>
+                      {/* Task name */}
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/dashboard/${task.projectId}`}
+                          className="font-medium text-gray-900 group-hover:text-indigo-700 transition-colors line-clamp-1"
+                        >
+                          {task.title}
+                        </Link>
+                        {/* only title shown */}
+                      </td>
 
-                {project.description && (
-                  <p className="text-xs text-gray-500 mb-3 line-clamp-2 leading-relaxed">
-                    {project?.description}
-                  </p>
-                )}
+                      {/* Project */}
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/dashboard/${task.projectId}`}
+                          className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full hover:bg-indigo-100 transition-colors whitespace-nowrap"
+                        >
+                          {task.projectName}
+                        </Link>
+                      </td>
+ 
+                      {/* Assignees */}
+                      <td className="px-4 py-3">
+                        {task.assignees.length === 0 ? (
+                          <span className="text-xs text-gray-400">N/A</span>
+                        ) : (
+                          <span className="text-sm text-gray-700">
+                            {task.assignees.map((a) => a.name).join(", ")}
+                          </span>
+                        )}
+                      </td>
 
-                <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    {project?.members?.slice(0, 4).map((m, i) => (
-                      <div
-                        key={m._id}
-                        className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center justify-center ring-2 ring-white"
-                        style={{ marginLeft: i > 0 ? "-6px" : "0" }}
-                        title={m.name}
-                      >
-                        {m.name?.charAt(0).toUpperCase()}
-                      </div>
-                    ))}
-                    {project?.members?.length > 4 && (
-                      <span className="text-xs text-gray-400 ml-1">+{project?.members?.length - 4}</span>
-                    )}
-                  </div>
-                  <Link
-                    href={`/dashboard/${project._id}`}
-                    className="text-xs text-indigo-600 font-medium hover:underline"
-                  >
-                    Open →
-                  </Link>
-                </div>
-              </div>
-            ))}
+                      {/* Status */}
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[task.status]}`}>
+                          {STATUS_LABELS[task.status]}
+                        </span>
+                      </td>
+
+                      {/* Priority */}
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-medium ${priority.color}`}>{priority.label}</span>
+                      </td>
+
+                      {/* Due */}
+                      <td className="px-4 py-3 text-xs text-gray-700 whitespace-nowrap">
+                        {task.dueAt ? new Date(task.dueAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—"}
+                      </td>
+
+                      {/* Updated */}
+                      <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
+                        {new Date(task.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                      </td>
+ 
+                      {/* Actions */}
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/dashboard/${task.projectId}`}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 transition-colors"
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </main>
+
+      {/* Add Task Modal */}
+      {showAddTask && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900">New Task</h2>
+              <button onClick={() => setShowAddTask(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleAddTask} className="p-6 space-y-4">
+              {addError && (
+                <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{addError}</div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Project <span className="text-red-500">*</span>
+                </label>
+                {projects.length === 0 ? (
+                  <p className="text-sm text-gray-400">
+                    No projects found.{" "}
+                    <Link href="/projects" className="text-indigo-600 hover:underline">Create one first.</Link>
+                  </p>
+                ) : (
+                  <select
+                    value={addForm.projectId}
+                    onChange={(e) => setAddForm({ ...addForm, projectId: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  >
+                    <option value="">Select a project</option>
+                    {projects.map((p) => (
+                      <option key={p._id} value={p._id}>{p.name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Assignees */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Assignees <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                {addForm.projectId ? (
+                  projects.find((p) => p._id === addForm.projectId)?.members?.length === 0 ? (
+                    <p className="text-sm text-gray-400">No project members found.</p>
+                  ) : (
+                    <div className="max-h-40 overflow-auto border border-gray-200 rounded-lg p-2 space-y-1">
+                      {projects
+                        .find((p) => p._id === addForm.projectId)
+                        ?.members?.map((m) => {
+                          const checked = addAssigneeIds.includes(m._id);
+                          return (
+                            <label
+                              key={m._id}
+                              className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-50 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => {
+                                  setAddAssigneeIds((prev) =>
+                                    prev.includes(m._id) ? prev.filter((id) => id !== m._id) : [...prev, m._id]
+                                  );
+                                }}
+                              />
+                              <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center justify-center">
+                                {m.name.charAt(0).toUpperCase()}
+                              </span>
+                              <span className="text-sm text-gray-700">{m.name}</span>
+                            </label>
+                          );
+                        })}
+                    </div>
+                  )
+                ) : (
+                  <p className="text-sm text-gray-400">Select a project to choose assignees.</p>
+                )}
+              </div>
+
+              {/* Due date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Due date</label>
+                <input
+                  type="date"
+                  value={addDueAt}
+                  onChange={(e) => setAddDueAt(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={addForm.title}
+                  onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
+                  placeholder="Task title"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  rows={3}
+                  value={addForm.description}
+                  onChange={(e) => setAddForm({ ...addForm, description: e.target.value })}
+                  placeholder="Optional description..."
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                <select
+                  value={addForm.priority}
+                  onChange={(e) => setAddForm({ ...addForm, priority: Number(e.target.value) })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                >
+                  <option value={1}>Critical</option>
+                  <option value={2}>High</option>
+                  <option value={3}>Medium</option>
+                  <option value={4}>Low</option>
+                  <option value={5}>Minimal</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddTask(false)}
+                  className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={adding || projects.length === 0}
+                  className="flex-1 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                >
+                  {adding ? "Creating..." : "Create Task"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

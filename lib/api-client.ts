@@ -72,6 +72,7 @@ export const api = {
     },
   },
   tasks: {
+    list: () => apiFetch<{ tasks: TaskWithProject[] }>("/api/tasks"),
     create: (projectId: string, body: CreateTaskBody) =>
       apiFetch<Task>(`/api/projects/${projectId}/tasks`, {
         method: "POST",
@@ -136,11 +137,16 @@ export interface Task {
   status: "todo" | "in_progress" | "done" | "archived";
   assignees: { _id: string; name: string; email: string }[];
   priority: number;
+  dueAt?: string;
   commentCount: number;
   lastCommentAt?: string;
   createdBy: { _id: string; name: string; email: string };
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TaskWithProject extends Task {
+  projectName: string;
 }
 
 export interface CreateTaskBody {
@@ -149,6 +155,7 @@ export interface CreateTaskBody {
   status?: Task["status"];
   assignees?: string[];
   priority?: number;
+  dueAt?: string;
 }
 
 export interface UpdateTaskBody {
@@ -157,6 +164,7 @@ export interface UpdateTaskBody {
   status?: Task["status"];
   assignees?: string[];
   priority?: number;
+  dueAt?: string;
 }
 
 export interface Comment {
