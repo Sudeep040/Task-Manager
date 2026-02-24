@@ -1,9 +1,8 @@
 import { NextRequest } from "next/server";
 import mongoose from "mongoose";
-import { connectDB } from "@/lib/db/connect";
 import Project from "@/lib/db/models/Project";
 import { updateProjectSchema } from "@/lib/validation/task.schema";
-import { apiSuccess, apiError, getAuthUser, ApiError } from "@/lib/api-helpers";
+import { apiSuccess, getAuthUser, ApiError, withAuth } from "@/lib/api-helpers";
 
 interface Params {
   params: Promise<{ projectId: string }>;
@@ -26,54 +25,39 @@ async function getProjectOrThrow(projectId: string, userId: string) {
   return project;
 }
 
-export async function GET(req: NextRequest, { params }: Params) {
-  try {
-    await connectDB();
-    const user = getAuthUser(req);
-    const { projectId } = await params;
-    const project = await getProjectOrThrow(projectId, user.userId);
-    return apiSuccess(project);
-  } catch (error) {
-    return apiError(error);
+export const GET = withAuth(async (req: NextRequest, { params }: Params) => {
+  const user = getAuthUser(req);
+  const { projectId } = await params;
+  const project = await getProjectOrThrow(projectId, user.userId);
+  return apiSuccess(project);
+});
+
+export const PATCH = withAuth(async (req: NextRequest, { params }: Params) => {
+  const user = getAuthUser(req);
+  const { projectId } = await params;
+  const project = await getProjectOrThrow(projectId, user.userId);
+
+  if (project.owner._id.toString() !== user.userId) {
+    throw new ApiError(403, "Only the project owner can update it", "FORBIDDEN");
   }
-}
 
-export async function PATCH(req: NextRequest, { params }: Params) {
-  try {
-    await connectDB();
-    const user = getAuthUser(req);
-    const { projectId } = await params;
-    const project = await getProjectOrThrow(projectId, user.userId);
+  const body = await req.json();
+  const updates = updateProjectSchema.parse(body);
+  Object.assign(project, updates);
+  await project.save();
 
-    if (project.owner._id.toString() !== user.userId) {
-      throw new ApiError(403, "Only the project owner can update it", "FORBIDDEN");
-    }
+  return apiSuccess(project);
+});
 
-    const body = await req.json();
-    const updates = updateProjectSchema.parse(body);
-    Object.assign(project, updates);
-    await project.save();
+export const DELETE = withAuth(async (req: NextRequest, { params }: Params) => {
+  const user = getAuthUser(req);
+  const { projectId } = await params;
+  const project = await getProjectOrThrow(projectId, user.userId);
 
-    return apiSuccess(project);
-  } catch (error) {
-    return apiError(error);
+  if (project.owner._id.toString() !== user.userId) {
+    throw new ApiError(403, "Only the project owner can delete it", "FORBIDDEN");
   }
-}
 
-export async function DELETE(req: NextRequest, { params }: Params) {
-  try {
-    await connectDB();
-    const user = getAuthUser(req);
-    const { projectId } = await params;
-    const project = await getProjectOrThrow(projectId, user.userId);
-
-    if (project.owner._id.toString() !== user.userId) {
-      throw new ApiError(403, "Only the project owner can delete it", "FORBIDDEN");
-    }
-
-    await project.deleteOne();
-    return apiSuccess({ deleted: true });
-  } catch (error) {
-    return apiError(error);
-  }
-}
+  await project.deleteOne();
+  return apiSuccess({ deleted: true });
+});

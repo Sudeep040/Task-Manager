@@ -1,10 +1,9 @@
 import { NextRequest } from "next/server";
 import mongoose from "mongoose";
-import { connectDB } from "@/lib/db/connect";
 import Task from "@/lib/db/models/Task";
 import Project from "@/lib/db/models/Project";
 import { updateTaskSchema } from "@/lib/validation/task.schema";
-import { apiSuccess, apiError, getAuthUser, ApiError } from "@/lib/api-helpers";
+import { apiSuccess, getAuthUser, ApiError, withAuth } from "@/lib/api-helpers";
 import { emitToProject } from "@/lib/socket/emitter";
 import { EVENTS } from "@/lib/socket/events";
 
@@ -30,72 +29,56 @@ async function getTaskAndVerifyAccess(taskId: string, userId: string) {
   return { task, project };
 }
 
-export async function GET(req: NextRequest, { params }: Params) {
-  try {
-    await connectDB();
-    const user = getAuthUser(req);
-    const { taskId } = await params;
-    const { task } = await getTaskAndVerifyAccess(taskId, user.userId);
+export const GET = withAuth(async (req: NextRequest, { params }: Params) => {
+  const user = getAuthUser(req);
+  const { taskId } = await params;
+  const { task } = await getTaskAndVerifyAccess(taskId, user.userId);
 
-    const populated = await task.populate([
-      { path: "assignees", select: "name email" },
-      { path: "createdBy", select: "name email" },
-    ]);
+  const populated = await task.populate([
+    { path: "assignees", select: "name email" },
+    { path: "createdBy", select: "name email" },
+  ]);
 
-    return apiSuccess(populated);
-  } catch (error) {
-    return apiError(error);
+  return apiSuccess(populated);
+});
+
+export const PATCH = withAuth(async (req: NextRequest, { params }: Params) => {
+  const user = getAuthUser(req);
+  const { taskId } = await params;
+  const { task } = await getTaskAndVerifyAccess(taskId, user.userId);
+
+  const body = await req.json();
+  const updates = updateTaskSchema.parse(body);
+
+  if (updates.title !== undefined) task.title = updates.title;
+  if (updates.description !== undefined) task.description = updates.description;
+  if (updates.status !== undefined) task.status = updates.status;
+  if (updates.priority !== undefined) task.priority = updates.priority;
+  if (updates.assignees !== undefined) {
+    task.assignees = updates.assignees.map((id) => new mongoose.Types.ObjectId(id));
   }
-}
 
-export async function PATCH(req: NextRequest, { params }: Params) {
-  try {
-    await connectDB();
-    const user = getAuthUser(req);
-    const { taskId } = await params;
-    const { task } = await getTaskAndVerifyAccess(taskId, user.userId);
+  await task.save();
 
-    const body = await req.json();
-    const updates = updateTaskSchema.parse(body);
+  const populated = await task.populate([
+    { path: "assignees", select: "name email" },
+    { path: "createdBy", select: "name email" },
+  ]);
 
-    // dueAt removed
-    if (updates.title !== undefined) task.title = updates.title;
-    if (updates.description !== undefined) task.description = updates.description;
-    if (updates.status !== undefined) task.status = updates.status;
-    if (updates.priority !== undefined) task.priority = updates.priority;
-    if (updates.assignees !== undefined) {
-      task.assignees = updates.assignees.map((id) => new mongoose.Types.ObjectId(id));
-    }
+  await emitToProject(task.projectId.toString(), EVENTS.TASK_UPDATED, populated.toObject());
 
-    await task.save();
+  return apiSuccess(populated);
+});
 
-    const populated = await task.populate([
-      { path: "assignees", select: "name email" },
-      { path: "createdBy", select: "name email" },
-    ]);
+export const DELETE = withAuth(async (req: NextRequest, { params }: Params) => {
+  const user = getAuthUser(req);
+  const { taskId } = await params;
+  const { task } = await getTaskAndVerifyAccess(taskId, user.userId);
 
-    await emitToProject(task.projectId.toString(), EVENTS.TASK_UPDATED, populated.toObject());
+  const projectId = task.projectId.toString();
+  await task.deleteOne();
 
-    return apiSuccess(populated);
-  } catch (error) {
-    return apiError(error);
-  }
-}
+  await emitToProject(projectId, EVENTS.TASK_DELETED, { taskId });
 
-export async function DELETE(req: NextRequest, { params }: Params) {
-  try {
-    await connectDB();
-    const user = getAuthUser(req);
-    const { taskId } = await params;
-    const { task } = await getTaskAndVerifyAccess(taskId, user.userId);
-
-    const projectId = task.projectId.toString();
-    await task.deleteOne();
-
-    await emitToProject(projectId, EVENTS.TASK_DELETED, { taskId });
-
-    return apiSuccess({ deleted: true });
-  } catch (error) {
-    return apiError(error);
-  }
-}
+  return apiSuccess({ deleted: true });
+});

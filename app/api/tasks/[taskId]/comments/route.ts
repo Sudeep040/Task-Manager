@@ -1,11 +1,10 @@
 import { NextRequest } from "next/server";
 import mongoose from "mongoose";
-import { connectDB } from "@/lib/db/connect";
 import Task from "@/lib/db/models/Task";
 import Comment from "@/lib/db/models/Comment";
 import Project from "@/lib/db/models/Project";
 import { createCommentSchema, commentCursorSchema } from "@/lib/validation/comment.schema";
-import { apiSuccess, apiError, getAuthUser, ApiError, encodeCursor, decodeCursor } from "@/lib/api-helpers";
+import { apiSuccess, getAuthUser, ApiError, withAuth, encodeCursor, decodeCursor } from "@/lib/api-helpers";
 import { emitToProject } from "@/lib/socket/emitter";
 import { EVENTS } from "@/lib/socket/events";
 
@@ -31,91 +30,81 @@ async function verifyTaskAccess(taskId: string, userId: string) {
   return task;
 }
 
-export async function GET(req: NextRequest, { params }: Params) {
-  try {
-    await connectDB();
-    const user = getAuthUser(req);
-    const { taskId } = await params;
-    await verifyTaskAccess(taskId, user.userId);
+export const GET = withAuth(async (req: NextRequest, { params }: Params) => {
+  const user = getAuthUser(req);
+  const { taskId } = await params;
+  await verifyTaskAccess(taskId, user.userId);
 
-    const { searchParams } = new URL(req.url);
-    const { cursor, limit } = commentCursorSchema.parse({
-      cursor: searchParams.get("cursor") ?? undefined,
-      limit: searchParams.get("limit") ?? 20,
-    });
+  const { searchParams } = new URL(req.url);
+  const { cursor, limit } = commentCursorSchema.parse({
+    cursor: searchParams.get("cursor") ?? undefined,
+    limit: searchParams.get("limit") ?? 20,
+  });
 
-    type CommentFilter = {
-      taskId: string;
-      $or?: Array<
-        | { createdAt: { $lt: Date } }
-        | { createdAt: Date; _id: { $lt: mongoose.Types.ObjectId } }
-      >;
-    };
+  type CommentFilter = {
+    taskId: string;
+    $or?: Array<
+      | { createdAt: { $lt: Date } }
+      | { createdAt: Date; _id: { $lt: mongoose.Types.ObjectId } }
+    >;
+  };
 
-    const filter: CommentFilter = { taskId };
-    if (cursor) {
-      const { updatedAt, _id } = decodeCursor(cursor);
-      filter.$or = [
-        { createdAt: { $lt: new Date(updatedAt) } },
-        {
-          createdAt: new Date(updatedAt),
-          _id: { $lt: new mongoose.Types.ObjectId(_id) },
-        },
-      ];
-    }
-
-    const comments = await Comment.find(filter)
-      .sort({ createdAt: -1, _id: -1 })
-      .limit(limit + 1)
-      .populate("authorId", "name email avatarUrl")
-      .lean();
-
-    let nextCursor: string | null = null;
-    if (comments.length > limit) {
-      comments.pop();
-      const last = comments[comments.length - 1];
-      nextCursor = encodeCursor({
-        updatedAt: last.createdAt.toISOString(),
-        _id: last._id.toString(),
-      });
-    }
-
-    return apiSuccess({ comments, nextCursor });
-  } catch (error) {
-    return apiError(error);
+  const filter: CommentFilter = { taskId };
+  if (cursor) {
+    const { updatedAt, _id } = decodeCursor(cursor);
+    filter.$or = [
+      { createdAt: { $lt: new Date(updatedAt) } },
+      {
+        createdAt: new Date(updatedAt),
+        _id: { $lt: new mongoose.Types.ObjectId(_id) },
+      },
+    ];
   }
-}
 
-export async function POST(req: NextRequest, { params }: Params) {
-  try {
-    await connectDB();
-    const user = getAuthUser(req);
-    const { taskId } = await params;
-    const task = await verifyTaskAccess(taskId, user.userId);
+  const comments = await Comment.find(filter)
+    .sort({ createdAt: -1, _id: -1 })
+    .limit(limit + 1)
+    .populate("authorId", "name email avatarUrl")
+    .lean();
 
-    const body = await req.json();
-    const { body: commentBody } = createCommentSchema.parse(body);
-
-    const comment = await Comment.create({
-      taskId,
-      authorId: user.userId,
-      body: commentBody,
+  let nextCursor: string | null = null;
+  if (comments.length > limit) {
+    comments.pop();
+    const last = comments[comments.length - 1];
+    nextCursor = encodeCursor({
+      updatedAt: last.createdAt.toISOString(),
+      _id: last._id.toString(),
     });
-
-    await Task.findByIdAndUpdate(taskId, {
-      $inc: { commentCount: 1 },
-      lastCommentAt: new Date(),
-    });
-
-    const populated = await comment.populate("authorId", "name email avatarUrl");
-
-    await emitToProject(task.projectId.toString(), EVENTS.COMMENT_CREATED, {
-      taskId,
-      comment: populated.toObject(),
-    });
-
-    return apiSuccess(populated, 201);
-  } catch (error) {
-    return apiError(error);
   }
-}
+
+  return apiSuccess({ comments, nextCursor });
+});
+
+export const POST = withAuth(async (req: NextRequest, { params }: Params) => {
+  const user = getAuthUser(req);
+  const { taskId } = await params;
+  const task = await verifyTaskAccess(taskId, user.userId);
+
+  const body = await req.json();
+  const { body: commentBody } = createCommentSchema.parse(body);
+
+  const comment = await Comment.create({
+    taskId,
+    authorId: user.userId,
+    body: commentBody,
+  });
+
+  await Task.findByIdAndUpdate(taskId, {
+    $inc: { commentCount: 1 },
+    lastCommentAt: new Date(),
+  });
+
+  const populated = await comment.populate("authorId", "name email avatarUrl");
+
+  await emitToProject(task.projectId.toString(), EVENTS.COMMENT_CREATED, {
+    taskId,
+    comment: populated.toObject(),
+  });
+
+  return apiSuccess(populated, 201);
+});

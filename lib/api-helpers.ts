@@ -18,7 +18,7 @@ export function apiSuccess<T>(data: T, status = 200) {
   return NextResponse.json({ success: true, data }, { status });
 }
 
-export function apiError(error: unknown) {
+export function apiError(error: unknown): NextResponse {
   if (error instanceof ApiError) {
     return NextResponse.json(
       { success: false, error: { message: error.message, code: error.code ?? "ERROR" } },
@@ -35,6 +35,13 @@ export function apiError(error: unknown) {
           details: error.issues,
         },
       },
+      { status: 400 }
+    );
+  }
+  // Malformed JSON body (req.json() throws SyntaxError)
+  if (error instanceof SyntaxError) {
+    return NextResponse.json(
+      { success: false, error: { message: "Invalid JSON in request body", code: "INVALID_JSON" } },
       { status: 400 }
     );
   }
@@ -55,11 +62,31 @@ export function getAuthUser(req: NextRequest): JwtPayload {
   }
 }
 
-type RouteHandler = (
-  req: NextRequest,
-  context: { params: Record<string, string> }
-) => Promise<NextResponse>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RouteContext = { params: Promise<any> };
+type RouteHandler = (req: NextRequest, context: RouteContext) => Promise<NextResponse>;
 
+/**
+ * Wraps a route handler with a global try/catch that formats all errors
+ * consistently using apiError(). Use this for public routes that don't
+ * require authentication.
+ */
+export function withHandler(handler: RouteHandler): RouteHandler {
+  return async (req, context) => {
+    try {
+      await connectDB();
+      return await handler(req, context);
+    } catch (error) {
+      return apiError(error);
+    }
+  };
+}
+
+/**
+ * Wraps a route handler with DB connection, JWT authentication, and global
+ * error handling. Throws 401 before the handler runs if the token is missing
+ * or invalid.
+ */
 export function withAuth(handler: RouteHandler): RouteHandler {
   return async (req, context) => {
     try {
