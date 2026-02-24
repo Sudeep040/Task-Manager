@@ -3,11 +3,12 @@
  import { Task } from "@/lib/api-client";
  import { TaskCard } from "./TaskCard";
  
- interface TaskBoardProps {
-   tasks: Task[];
-   onTaskClick: (task: Task) => void;
-   loading?: boolean;
- }
+interface TaskBoardProps {
+  tasks: Task[];
+  onTaskClick: (task: Task) => void;
+  loading?: boolean;
+  onlineUserIds?: Set<string>;
+}
  
  // Only show the main kanban columns requested by the user.
  const COLUMNS: { key: Task["status"]; label: string; color: string }[] = [
@@ -18,7 +19,7 @@
  
  ];
  
- export function TaskBoard({ tasks, onTaskClick, loading }: TaskBoardProps) {
+ export function TaskBoard({ tasks, onTaskClick, loading, onlineUserIds = new Set() }: TaskBoardProps) {
    const byStatus = (status: Task["status"]) => tasks.filter((t) => t.status === status);
  
   if (loading) {
@@ -53,7 +54,7 @@
  
              <div className="flex flex-col gap-3">
                {colTasks.map((task) => (
-                 <TaskCard key={task._id} task={task} onClick={onTaskClick} />
+                 <TaskCard key={task._id} task={task} onClick={onTaskClick} onlineUserIds={onlineUserIds} />
                ))}
                {colTasks.length === 0 && (
                  <p className="text-xs text-gray-400 text-center py-6">No tasks</p>

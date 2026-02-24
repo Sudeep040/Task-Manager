@@ -1,10 +1,12 @@
 "use client";
 
 import { Task } from "@/lib/api-client";
+import { UserAvatar } from "./UserAvatar";
 
 interface TaskCardProps {
   task: Task;
   onClick: (task: Task) => void;
+  onlineUserIds?: Set<string>;
 }
 
 const STATUS_COLORS: Record<Task["status"], string> = {
@@ -22,7 +24,7 @@ const PRIORITY_LABELS: Record<number, { label: string; color: string }> = {
   5: { label: "Minimal", color: "text-gray-400" },
 };
 
-export function TaskCard({ task, onClick }: TaskCardProps) {
+export function TaskCard({ task, onClick, onlineUserIds = new Set() }: TaskCardProps) {
   const priority = PRIORITY_LABELS[task.priority] ?? PRIORITY_LABELS[3];
 
   return (
@@ -44,15 +46,14 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
       <div className="flex items-center justify-between mt-auto">
         <div className="flex items-center gap-2">
           {task.assignees.length > 0 && (
-            <div className="flex -space-x-1">
+            <div className="flex items-center gap-0.5">
               {task.assignees.slice(0, 3).map((a) => (
-                <div
+                <UserAvatar
                   key={a._id}
-                  title={a.name}
-                  className="w-5 h-5 rounded-full bg-indigo-400 flex items-center justify-center text-white text-xs border border-white"
-                >
-                  {a.name.charAt(0).toUpperCase()}
-                </div>
+                  name={a.name}
+                  isOnline={onlineUserIds.has(a._id)}
+                  size="sm"
+                />
               ))}
             </div>
           )}

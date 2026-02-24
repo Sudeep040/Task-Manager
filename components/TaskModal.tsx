@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Task, Comment, api } from "@/lib/api-client";
 import { CommentThread } from "./CommentThread";
+import { UserAvatar } from "./UserAvatar";
 
 interface TaskModalProps {
   task: Task;
@@ -11,11 +12,12 @@ interface TaskModalProps {
   onUpdate: (task: Task) => void;
   onDelete: (taskId: string) => void;
   newComment?: Comment;
+  onlineUserIds?: Set<string>;
 }
 
 const STATUSES: Task["status"][] = ["todo", "in_progress", "done", "archived"];
 
-export function TaskModal({ task, projectMembers, onClose, onUpdate, onDelete, newComment }: TaskModalProps) {
+export function TaskModal({ task, projectMembers, onClose, onUpdate, onDelete, newComment, onlineUserIds = new Set() }: TaskModalProps) {
   const [status, setStatus] = useState<Task["status"]>(task.status);
   const [saving, setSaving] = useState(false);
   const [priority, setPriority] = useState<number>(task.priority);
@@ -177,10 +179,11 @@ export function TaskModal({ task, projectMembers, onClose, onUpdate, onDelete, n
                     key={a._id}
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-full text-sm"
                   >
-                    <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center">
-                      {a.name.charAt(0).toUpperCase()}
-                    </span>
+                    <UserAvatar name={a.name} isOnline={onlineUserIds.has(a._id)} size="sm" />
                     <span>{a.name}</span>
+                    {onlineUserIds.has(a._id) && (
+                      <span className="text-xs text-emerald-600 font-medium">online</span>
+                    )}
                     <button
                       onClick={() => handleUnassign(a._id)}
                       disabled={assigneeActionId === a._id}

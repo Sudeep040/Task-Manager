@@ -8,6 +8,7 @@ import { TaskBoard } from "@/components/TaskBoard";
 import { TaskModal } from "@/components/TaskModal";
 import { CreateTaskModal } from "@/components/CreateTaskModal";
 import { PresenceBar } from "@/components/PresenceBar";
+import { UserAvatar } from "@/components/UserAvatar";
 import { useSocket } from "@/hooks/useSocket";
 
 export default function DashboardPage() {
@@ -76,6 +77,8 @@ export default function DashboardPage() {
     onTaskDeleted: handleTaskDeleted,
     onCommentCreated: handleCommentCreated,
   });
+
+  const onlineUserIds = new Set(presenceUsers.map((u) => u.userId));
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -330,7 +333,7 @@ export default function DashboardPage() {
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Left: main content */}
           <div className="flex-1">
-            <TaskBoard tasks={displayedTasks} onTaskClick={setSelectedTask} loading={loading} />
+            <TaskBoard tasks={displayedTasks} onTaskClick={setSelectedTask} loading={loading} onlineUserIds={onlineUserIds} />
 
             {nextCursor && !searchResults && (
               <div className="text-center mt-6">
@@ -355,10 +358,11 @@ export default function DashboardPage() {
                       key={m._id}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-full text-sm"
                     >
-                      <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center">
-                        {m.name.charAt(0).toUpperCase()}
-                      </span>
+                      <UserAvatar name={m.name} isOnline={onlineUserIds.has(m._id)} size="sm" />
                       <span className="truncate max-w-xs">{m.name}</span>
+                      {onlineUserIds.has(m._id) && (
+                        <span className="text-xs text-emerald-600 font-medium">online</span>
+                      )}
                       {m._id === project.owner._id && (
                         <span className="text-xs text-indigo-400">(owner)</span>
                       )}
@@ -430,6 +434,7 @@ export default function DashboardPage() {
             setSelectedTask(null);
           }}
           newComment={newComment}
+          onlineUserIds={onlineUserIds}
         />
       )}
 
