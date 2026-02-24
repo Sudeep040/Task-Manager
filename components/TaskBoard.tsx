@@ -38,8 +38,10 @@ interface TaskBoardProps {
    return (
     // Vertical stacked columns: each column sits full-width stacked one below another.
    <div className="flex flex-col gap-4 pb-4">
-       {COLUMNS.map((col) => {
-         const colTasks = byStatus(col.key);
+      {COLUMNS.map((col) => {
+        const colTasks = byStatus(col.key);
+        // Deduplicate tasks by _id to avoid duplicate React keys when backend/CSV contains dupes.
+        const uniqueTasks = Array.from(new Map(colTasks.map((t) => [t._id, t])).values());
          return (
            <div
              key={col.key}
@@ -48,18 +50,23 @@ interface TaskBoardProps {
              <div className="flex items-center justify-between mb-3">
                <h2 className="text-sm font-semibold text-gray-700">{col.label}</h2>
                <span className="text-xs bg-white border border-gray-200 rounded-full px-2 py-0.5 text-gray-500 font-medium">
-                 {colTasks.length}
+                {uniqueTasks.length}
                </span>
              </div>
  
-             <div className="flex flex-col gap-3">
-               {colTasks.map((task) => (
-                 <TaskCard key={task._id} task={task} onClick={onTaskClick} onlineUserIds={onlineUserIds} />
-               ))}
-               {colTasks.length === 0 && (
-                 <p className="text-xs text-gray-400 text-center py-6">No tasks</p>
-               )}
-             </div>
+              <div className="flex flex-col gap-3">
+                {uniqueTasks.map((task) => (
+                  <TaskCard
+                    key={`${col.key}-${task._id}`}
+                    task={task}
+                    onClick={onTaskClick}
+                    onlineUserIds={onlineUserIds}
+                  />
+                ))}
+                {uniqueTasks.length === 0 && (
+                  <p className="text-xs text-gray-400 text-center py-6">No tasks</p>
+                )}
+              </div>
            </div>
          );
        })}
