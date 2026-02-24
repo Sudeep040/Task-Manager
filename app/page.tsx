@@ -35,7 +35,7 @@ export default function HomePage() {
   const [user, setUser] = useState<{ id: string; name: string; email: string } | null>(null);
   const [showAddTask, setShowAddTask] = useState(false);
   const [addForm, setAddForm] = useState({ projectId: "", title: "", description: "", priority: 3 });
-  const [addAssigneeIds, setAddAssigneeIds] = useState<string[]>([]);
+  const [addAssigneeId, setAddAssigneeId] = useState<string>("");
   const [addDueAt, setAddDueAt] = useState<string>("");
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState("");
@@ -76,14 +76,14 @@ export default function HomePage() {
         title: addForm.title.trim(),
         description: addForm.description.trim() || undefined,
         priority: addForm.priority,
-        assignees: addAssigneeIds,
+        assignees: addAssigneeId ? [addAssigneeId] : [],
         dueAt: addDueAt || undefined,
       });
       const project = projects.find((p) => p._id === addForm.projectId);
       const taskWithProject: TaskWithProject = { ...task, projectName: project?.name ?? "Unknown" };
       setTasks((prev) => [taskWithProject, ...prev]);
       setAddForm({ projectId: "", title: "", description: "", priority: 3 });
-      setAddAssigneeIds([]);
+      setAddAssigneeId("");
       setAddDueAt("");
       setShowAddTask(false);
     } catch (err) {
@@ -361,33 +361,20 @@ export default function HomePage() {
                   projects.find((p) => p._id === addForm.projectId)?.members?.length === 0 ? (
                     <p className="text-sm text-gray-400">No project members found.</p>
                   ) : (
-                    <div className="max-h-40 overflow-auto border border-gray-200 rounded-lg p-2 space-y-1">
+                    <select
+                      value={addAssigneeId}
+                      onChange={(e) => setAddAssigneeId(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    >
+                      <option value="">Unassigned</option>
                       {projects
                         .find((p) => p._id === addForm.projectId)
-                        ?.members?.map((m) => {
-                          const checked = addAssigneeIds.includes(m._id);
-                          return (
-                            <label
-                              key={m._id}
-                              className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-50 cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => {
-                                  setAddAssigneeIds((prev) =>
-                                    prev.includes(m._id) ? prev.filter((id) => id !== m._id) : [...prev, m._id]
-                                  );
-                                }}
-                              />
-                              <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center justify-center">
-                                {m.name.charAt(0).toUpperCase()}
-                              </span>
-                              <span className="text-sm text-gray-700">{m.name}</span>
-                            </label>
-                          );
-                        })}
-                    </div>
+                        ?.members?.map((m) => (
+                          <option key={m._id} value={m._id}>
+                            {m.name}
+                          </option>
+                        ))}
+                    </select>
                   )
                 ) : (
                   <p className="text-sm text-gray-400">Select a project to choose assignees.</p>

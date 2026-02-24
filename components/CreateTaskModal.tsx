@@ -16,7 +16,7 @@ export function CreateTaskModal({ projectId, members, onClose, onCreated }: Crea
     description: "",
     priority: 3,
   });
-  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
+  const [assigneeId, setAssigneeId] = useState<string>("");
   const [dueAt, setDueAt] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -38,7 +38,7 @@ export function CreateTaskModal({ projectId, members, onClose, onCreated }: Crea
         title: form.title.trim(),
         description: form.description.trim() || undefined,
         priority: form.priority,
-        assignees: assigneeIds,
+        assignees: assigneeId ? [assigneeId] : [],
         dueAt: dueAt || undefined,
       });
       onCreated(task);
@@ -123,31 +123,18 @@ export function CreateTaskModal({ projectId, members, onClose, onCreated }: Crea
             {sortedMembers.length === 0 ? (
               <p className="text-sm text-gray-400">No project members found.</p>
             ) : (
-              <div className="max-h-40 overflow-auto border border-gray-200 rounded-lg p-2 space-y-1">
-                {sortedMembers.map((m) => {
-                  const checked = assigneeIds.includes(m._id);
-                  return (
-                    <label
-                      key={m._id}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-50 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => {
-                          setAssigneeIds((prev) =>
-                            prev.includes(m._id) ? prev.filter((id) => id !== m._id) : [...prev, m._id]
-                          );
-                        }}
-                      />
-                      <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center justify-center">
-                        {m.name.charAt(0).toUpperCase()}
-                      </span>
-                      <span className="text-sm text-gray-700">{m.name}</span>
-                    </label>
-                  );
-                })}
-              </div>
+              <select
+                value={assigneeId}
+                onChange={(e) => setAssigneeId(e.target.value)}
+                className="w-full border text-gray-700 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              >
+                <option value="">Unassigned</option>
+                {sortedMembers.map((m) => (
+                  <option key={m._id} value={m._id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
             )}
           </div>
 

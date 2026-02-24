@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { api, Task, Project, Comment } from "@/lib/api-client";
@@ -10,6 +10,28 @@ import { CreateTaskModal } from "@/components/CreateTaskModal";
 import { PresenceBar } from "@/components/PresenceBar";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useSocket } from "@/hooks/useSocket";
+
+const STATUS_COLORS: Record<string, string> = {
+  todo: "bg-gray-100 text-gray-600",
+  in_progress: "bg-blue-100 text-blue-700",
+  done: "bg-green-100 text-green-700",
+  archived: "bg-yellow-100 text-yellow-700",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  todo: "Todo",
+  in_progress: "In Progress",
+  done: "Done",
+  archived: "Archived",
+};
+
+const PRIORITY_LABELS: Record<number, { label: string; color: string }> = {
+  1: { label: "Critical", color: "text-red-600" },
+  2: { label: "High", color: "text-orange-500" },
+  3: { label: "Medium", color: "text-yellow-600" },
+  4: { label: "Low", color: "text-blue-500" },
+  5: { label: "Minimal", color: "text-gray-400" },
+};
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -218,6 +240,14 @@ export default function DashboardPage() {
   }
 
   const displayedTasks = searchResults ?? tasks;
+  // remove duplicate tasks (sometimes tasks array may contain duplicates when merging pages)
+  const uniqueDisplayedTasks = useMemo(() => {
+    const seen = new Map<string, Task>();
+    for (const t of displayedTasks) {
+      if (!seen.has(t._id)) seen.set(t._id, t);
+    }
+    return Array.from(seen.values());
+  }, [displayedTasks]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -333,7 +363,74 @@ export default function DashboardPage() {
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Left: main content */}
           <div className="flex-1">
-            <TaskBoard tasks={displayedTasks} onTaskClick={setSelectedTask} loading={loading} onlineUserIds={onlineUserIds} />
+            {/* Tasks table (replaces TaskBoard) */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-[40%]">Task</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Assignees</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Priority</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Due</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Updated</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                {uniqueDisplayedTasks.map((task) => {
+                    const priority = PRIORITY_LABELS[task.priority] ?? PRIORITY_LABELS[3];
+                    return (
+                      <tr key={task._id} className="hover:bg-indigo-50/40 transition-colors group">
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => setSelectedTask(task)}
+                            className="font-medium text-gray-900 group-hover:text-indigo-700 transition-colors line-clamp-1 text-left"
+                          >
+                            {task.title}
+                          </button>
+                        </td>
+
+                        <td className="px-4 py-3">
+                          {task.assignees.length === 0 ? (
+                            <span className="text-xs text-gray-400">N/A</span>
+                          ) : (
+                            <span className="text-sm text-gray-700">{task.assignees.map((a) => a.name).join(", ")}</span>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[task.status]}`}>
+                            {STATUS_LABELS[task.status]}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <span className={`text-xs font-medium ${priority.color}`}>{priority.label}</span>
+                        </td>
+
+                        <td className="px-4 py-3 text-xs text-gray-700 whitespace-nowrap">
+                          {task.dueAt ? new Date(task.dueAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—"}
+                        </td>
+
+                        <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
+                          {new Date(task.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => setSelectedTask(task)}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 transition-colors"
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
             {nextCursor && !searchResults && (
               <div className="text-center mt-6">
