@@ -22,6 +22,7 @@ export default function DashboardPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("");
   const [searchQ, setSearchQ] = useState("");
   const [searchResults, setSearchResults] = useState<Task[] | null>(null);
   const [newComment, setNewComment] = useState<Comment | undefined>(undefined);
@@ -82,8 +83,10 @@ export default function DashboardPage() {
       router.push("/login");
       return;
     }
+    // Clear search results when switching filters so UI shows filtered list
+    setSearchResults(null);
     loadData();
-  }, [projectId, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [projectId, statusFilter, assigneeFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadData() {
     setLoading(true);
@@ -92,6 +95,7 @@ export default function DashboardPage() {
         api.projects.get(projectId),
         api.projects.dashboard(projectId, {
           status: statusFilter || undefined,
+          assignee: assigneeFilter || undefined,
           limit: 50,
         }),
       ]);
@@ -109,6 +113,7 @@ export default function DashboardPage() {
     if (!nextCursor) return;
     const result = await api.projects.dashboard(projectId, {
       status: statusFilter || undefined,
+      assignee: assigneeFilter || undefined,
       cursor: nextCursor,
       limit: 50,
     });
@@ -267,6 +272,20 @@ export default function DashboardPage() {
               <option value="in_progress">In Progress</option>
               <option value="done">Done</option>
               <option value="archived">Archived</option>
+            </select>
+            
+            {/* Assignee filter */}
+            <select
+              value={assigneeFilter}
+              onChange={(e) => setAssigneeFilter(e.target.value)}
+              className="border border-gray-200 text-gray-700 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            >
+              <option value="">All assignees</option>
+              {project?.members.map((m) => (
+                <option key={m._id} value={m._id}>
+                  {m.name}
+                </option>
+              ))}
             </select>
 
             <button
