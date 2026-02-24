@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [newComment, setNewComment] = useState<Comment | undefined>(undefined);
   const [addingMember, setAddingMember] = useState(false);
   const [memberError, setMemberError] = useState("");
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [availableUsers, setAvailableUsers] = useState<{ _id: string; name: string; email: string }[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -187,6 +188,27 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleRemoveMember(userId: string) {
+    if (!confirm("Remove this member from the project?")) return;
+    setMemberError("");
+    setRemovingMemberId(userId);
+    try {
+      await api.projects.removeMember(projectId, userId);
+      // refresh project to reflect canonical state
+      const updated = await api.projects.get(projectId);
+      setProject(updated);
+      try {
+        window.dispatchEvent(new CustomEvent("project:members:updated", { detail: updated }));
+      } catch {
+        // ignore
+      }
+    } catch (err) {
+      setMemberError(err instanceof Error ? err.message : "Failed to remove member");
+    } finally {
+      setRemovingMemberId(null);
+    }
+  }
+
   const displayedTasks = searchResults ?? tasks;
 
   return (
@@ -317,10 +339,32 @@ export default function DashboardPage() {
                       <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center">
                         {m.name.charAt(0).toUpperCase()}
                       </span>
-                      {m.name}
+                      <span className="truncate max-w-xs">{m.name}</span>
                       {m._id === project.owner._id && (
                         <span className="text-xs text-indigo-400">(owner)</span>
                       )}
+                      {/* Remove button: visible to project owner and not shown for the owner themselves */}
+                      {typeof window !== "undefined" &&
+                        project.owner._id === (JSON.parse(localStorage.getItem("user") || "{}") as any).id &&
+                        m._id !== project.owner._id && (
+                          <button
+                            onClick={() => handleRemoveMember(m._id)}
+                            disabled={removingMemberId === m._id}
+                            title="Remove member"
+                            className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full text-red-500 hover:bg-red-50 transition-colors"
+                          >
+                            {removingMemberId === m._id ? (
+                              <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                              </svg>
+                            ) : (
+                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            )}
+                          </button>
+                        )}
                     </span>
                   ))}
                 </div>
