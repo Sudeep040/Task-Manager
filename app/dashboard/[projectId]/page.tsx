@@ -272,7 +272,7 @@ export default function DashboardPage() {
                 placeholder="Add member by email"
                 value={addMemberEmail}
                 onChange={(e) => setAddMemberEmail(e.target.value)}
-                className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="flex-1 border border-gray-200 text-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
               />
               <button
                 type="submit"
