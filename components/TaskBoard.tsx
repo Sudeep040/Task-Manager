@@ -14,6 +14,8 @@
    { key: "todo", label: "To Do", color: "bg-gray-50 border-gray-200" },
    { key: "in_progress", label: "In Progress", color: "bg-blue-50 border-blue-200" },
    { key: "done", label: "Done", color: "bg-green-50 border-green-200" },
+   { key: "archived", label: "Archived", color: "bg-yellow-50 border-yellow-200" },
+ 
  ];
  
  export function TaskBoard({ tasks, onTaskClick, loading }: TaskBoardProps) {

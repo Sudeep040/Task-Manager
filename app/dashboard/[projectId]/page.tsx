@@ -222,7 +222,7 @@ export default function DashboardPage() {
                   if (!e.target.value) setSearchResults(null);
                 }}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="border border-gray-200 text-gray-700 rounded-lg px-3 py-1.5 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-indigo-300"
               />
               <button
                 onClick={handleSearch}
@@ -238,7 +238,7 @@ export default function DashboardPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="border border-gray-200 text-gray-700 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
             >
               <option value="">All statuses</option>
               <option value="todo">To Do</option>

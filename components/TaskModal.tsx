@@ -17,6 +17,7 @@ const STATUSES: Task["status"][] = ["todo", "in_progress", "done", "archived"];
 export function TaskModal({ task, onClose, onUpdate, onDelete, newComment }: TaskModalProps) {
   const [status, setStatus] = useState<Task["status"]>(task.status);
   const [saving, setSaving] = useState(false);
+  const [priority, setPriority] = useState<number>(task.priority);
   const [deleting, setDeleting] = useState(false);
 
   async function handleStatusChange(newStatus: Task["status"]) {
@@ -28,6 +29,23 @@ export function TaskModal({ task, onClose, onUpdate, onDelete, newComment }: Tas
     } catch (err) {
       console.error(err);
       setStatus(task.status);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handlePriorityChange(newPriority: number) {
+    setPriority(newPriority);
+    setSaving(true);
+    try {
+      const updated = await api.tasks.update(task._id, { priority: newPriority });
+      onUpdate(updated);
+      try {
+        window.dispatchEvent(new CustomEvent("task:updated", { detail: updated }));
+      } catch {}
+    } catch (err) {
+      console.error(err);
+      setPriority(task.priority);
     } finally {
       setSaving(false);
     }
@@ -88,6 +106,24 @@ export function TaskModal({ task, onClose, onUpdate, onDelete, newComment }: Tas
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Priority */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+              Priority
+            </label>
+            <select
+              value={priority}
+              onChange={(e) => handlePriorityChange(Number(e.target.value))}
+              className="px-3 py-1.5 text-gray-700 rounded-lg text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            >
+              <option value={1}>Critical</option>
+              <option value={2}>High</option>
+              <option value={3}>Medium</option>
+              <option value={4}>Low</option>
+              <option value={5}>Minimal</option>
+            </select>
           </div>
 
           {/* Assignees */}
