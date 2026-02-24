@@ -275,31 +275,24 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Search */}
-            <div className="flex gap-1">
-              <input
-                type="text"
-                placeholder="Search tasks..."
-                value={searchQ}
-                onChange={(e) => {
-                  setSearchQ(e.target.value);
-                  if (!e.target.value) setSearchResults(null);
-                }}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="border border-gray-200 text-gray-700 rounded-lg px-3 py-1.5 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-              />
-              <button
-                onClick={handleSearch}
-                className="px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </button>
-            </div>
+            
 
-            {/* Status filter */}
-            <select
+            <Link
+              href="/profile"
+              className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 text-sm font-semibold flex items-center justify-center hover:bg-indigo-200 transition-colors shrink-0"
+              title="My Profile"
+            >
+              {project?.members?.find(m => m.email === (typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}").email : ""))?.name?.charAt(0).toUpperCase() ?? "U"}
+            </Link>
+          </div>
+        </div>
+
+       
+      </header>
+
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
+        <div className="flex pb-4 gap-4"> 
+          <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="border border-gray-200 text-gray-700 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
@@ -334,22 +327,7 @@ export default function DashboardPage() {
               </svg>
               Add Task
             </button>
-
-            <Link
-              href="/profile"
-              className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 text-sm font-semibold flex items-center justify-center hover:bg-indigo-200 transition-colors shrink-0"
-              title="My Profile"
-            >
-              {project?.members?.find(m => m.email === (typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}").email : ""))?.name?.charAt(0).toUpperCase() ?? "U"}
-            </Link>
-          </div>
-        </div>
-
-        {/* Presence bar */}
-        <PresenceBar users={presenceUsers} connected={connected} />
-      </header>
-
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
+            </div>
         {searchResults !== null && (
           <div className="mb-4 flex items-center gap-2">
             <span className="text-sm text-gray-500">
@@ -397,6 +375,11 @@ export default function DashboardPage() {
                   ) : (
                     uniqueDisplayedTasks.map((task) => {
                       const priority = PRIORITY_LABELS[task.priority] ?? PRIORITY_LABELS[3];
+                      const canEdit =
+                        !!(
+                          currentUserId &&
+                          (currentUserId === task.createdBy._id || task.assignees.some((a) => a._id === currentUserId))
+                        );
                       return (
                         <tr key={task._id} className="hover:bg-indigo-50/40 transition-colors group">
                           <td className="px-4 py-3">
@@ -417,9 +400,11 @@ export default function DashboardPage() {
                           </td>
 
                           <td className="px-4 py-3">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[task.status]}`}>
-                              {STATUS_LABELS[task.status]}
-                            </span>
+                          <span
+                            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap min-w-[5.5rem] ${STATUS_COLORS[task.status]}`}
+                          >
+                            {STATUS_LABELS[task.status]}
+                          </span>
                           </td>
 
                           <td className="px-4 py-3">
@@ -439,7 +424,7 @@ export default function DashboardPage() {
                               onClick={() => setSelectedTask(task)}
                               className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 transition-colors"
                             >
-                              View
+                              {canEdit ? "Edit" : "View"}
                             </button>
                           </td>
                         </tr>

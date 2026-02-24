@@ -267,7 +267,9 @@ export default function HomePage() {
 
                       {/* Status */}
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[task.status]}`}>
+                        <span
+                          className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap min-w-[5.5rem] ${STATUS_COLORS[task.status]}`}
+                        >
                           {STATUS_LABELS[task.status]}
                         </span>
                       </td>
