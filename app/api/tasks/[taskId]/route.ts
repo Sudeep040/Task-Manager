@@ -50,11 +50,22 @@ export const PATCH = withAuth(async (req: NextRequest, { params }: Params) => {
   const body = await req.json();
   const updates = updateTaskSchema.parse(body);
 
+  // Only task creator or assigned users can edit the task
+  const isCreator = task.createdBy && task.createdBy.toString() === user.userId;
+  const isAssignee = task.assignees.some((a) => a.toString() === user.userId);
+  if (!isCreator && !isAssignee) {
+    throw new ApiError(403, "Only the task creator or assignees can edit this task", "FORBIDDEN");
+  }
+
   if (updates.title !== undefined) task.title = updates.title;
   if (updates.description !== undefined) task.description = updates.description;
   if (updates.status !== undefined) task.status = updates.status;
   if (updates.priority !== undefined) task.priority = updates.priority;
   if (updates.assignees !== undefined) {
+    // Only the task creator can change assignees
+    if (!isCreator) {
+      throw new ApiError(403, "Only the task creator can change assignees", "FORBIDDEN");
+    }
     task.assignees = updates.assignees.map((id) => new mongoose.Types.ObjectId(id));
   }
 
@@ -74,6 +85,11 @@ export const DELETE = withAuth(async (req: NextRequest, { params }: Params) => {
   const user = getAuthUser(req);
   const { taskId } = await params;
   const { task } = await getTaskAndVerifyAccess(taskId, user.userId);
+
+  // Only the task creator can delete the task
+  if (!task.createdBy || task.createdBy.toString() !== user.userId) {
+    throw new ApiError(403, "Only the task creator can delete this task", "FORBIDDEN");
+  }
 
   const projectId = task.projectId.toString();
   await task.deleteOne();

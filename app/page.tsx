@@ -153,15 +153,7 @@ export default function HomePage() {
                 : `${filtered.length} task${filtered.length !== 1 ? "s" : ""} assigned to you${statusFilter ? ` · ${STATUS_LABELS[statusFilter]}` : ""}`}
             </p>
           </div>
-          <button
-            onClick={() => { setShowAddTask(true); setAddError(""); }}
-            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Task
-          </button>
+           
         </div>
 
         {/* Status filter pills */}
@@ -243,23 +235,23 @@ export default function HomePage() {
                     >
                       {/* Task name */}
                       <td className="px-4 py-3">
-                        <Link
-                          href={`/dashboard/${task.projectId}`}
+                        <div
+                          
                           className="font-medium text-gray-900 group-hover:text-indigo-700 transition-colors line-clamp-1"
                         >
                           {task.title}
-                        </Link>
+                        </div>
                         {/* only title shown */}
                       </td>
 
                       {/* Project */}
                       <td className="px-4 py-3">
-                        <Link
-                          href={`/dashboard/${task.projectId}`}
+                        <div
+                          
                           className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full hover:bg-indigo-100 transition-colors whitespace-nowrap"
                         >
                           {task.projectName}
-                        </Link>
+                        </div>
                       </td>
  
                       {/* Assignees */}
@@ -461,7 +453,6 @@ export default function HomePage() {
           task={selectedTask}
           projectMembers={projects.find((p) => p._id === selectedTask.projectId)?.members ?? []}
           currentUserId={(typeof window !== "undefined" && JSON.parse(localStorage.getItem("user") || "{}")?.id) ?? ""}
-          projectOwnerId={projects.find((p) => p._id === selectedTask.projectId)?.owner._id ?? ""}
           onClose={() => setSelectedTask(null)}
           onUpdate={(updated: any) => setTasks((prev: any[]) => prev.map((t) => (t._id === updated._id ? updated : t)))}
           onDelete={(id: string) => setTasks((prev: any[]) => prev.filter((t) => t._id !== id))}

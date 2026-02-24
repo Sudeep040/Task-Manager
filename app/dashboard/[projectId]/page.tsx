@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { api, Task, Project, Comment } from "@/lib/api-client";
-import { TaskBoard } from "@/components/TaskBoard";
+// TaskBoard replaced by table view on dashboard; keep import removed.
 import { TaskModal } from "@/components/TaskModal";
 import { CreateTaskModal } from "@/components/CreateTaskModal";
 import { PresenceBar } from "@/components/PresenceBar";
@@ -101,6 +101,10 @@ export default function DashboardPage() {
   });
 
   const onlineUserIds = new Set(presenceUsers.map((u) => u.userId));
+  const currentUserId =
+    typeof window !== "undefined"
+      ? (JSON.parse(localStorage.getItem("user") || "{}") as { id?: string }).id ?? ""
+      : "";
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -378,56 +382,70 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                {uniqueDisplayedTasks.map((task) => {
-                    const priority = PRIORITY_LABELS[task.priority] ?? PRIORITY_LABELS[3];
-                    return (
-                      <tr key={task._id} className="hover:bg-indigo-50/40 transition-colors group">
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => setSelectedTask(task)}
-                            className="font-medium text-gray-900 group-hover:text-indigo-700 transition-colors line-clamp-1 text-left"
-                          >
-                            {task.title}
-                          </button>
-                        </td>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-gray-500">
+                        Loading…
+                      </td>
+                    </tr>
+                  ) : uniqueDisplayedTasks.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-gray-500">
+                        No tasks yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    uniqueDisplayedTasks.map((task) => {
+                      const priority = PRIORITY_LABELS[task.priority] ?? PRIORITY_LABELS[3];
+                      return (
+                        <tr key={task._id} className="hover:bg-indigo-50/40 transition-colors group">
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => setSelectedTask(task)}
+                              className="font-medium text-gray-900 group-hover:text-indigo-700 transition-colors line-clamp-1 text-left"
+                            >
+                              {task.title}
+                            </button>
+                          </td>
 
-                        <td className="px-4 py-3">
-                          {task.assignees.length === 0 ? (
-                            <span className="text-xs text-gray-400">N/A</span>
-                          ) : (
-                            <span className="text-sm text-gray-700">{task.assignees.map((a) => a.name).join(", ")}</span>
-                          )}
-                        </td>
+                          <td className="px-4 py-3">
+                            {task.assignees.length === 0 ? (
+                              <span className="text-xs text-gray-400">N/A</span>
+                            ) : (
+                              <span className="text-sm text-gray-700">{task.assignees.map((a) => a.name).join(", ")}</span>
+                            )}
+                          </td>
 
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[task.status]}`}>
-                            {STATUS_LABELS[task.status]}
-                          </span>
-                        </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[task.status]}`}>
+                              {STATUS_LABELS[task.status]}
+                            </span>
+                          </td>
 
-                        <td className="px-4 py-3">
-                          <span className={`text-xs font-medium ${priority.color}`}>{priority.label}</span>
-                        </td>
+                          <td className="px-4 py-3">
+                            <span className={`text-xs font-medium ${priority.color}`}>{priority.label}</span>
+                          </td>
 
-                        <td className="px-4 py-3 text-xs text-gray-700 whitespace-nowrap">
-                          {task.dueAt ? new Date(task.dueAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—"}
-                        </td>
+                          <td className="px-4 py-3 text-xs text-gray-700 whitespace-nowrap">
+                            {task.dueAt ? new Date(task.dueAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—"}
+                          </td>
 
-                        <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
-                          {new Date(task.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                        </td>
+                          <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
+                            {new Date(task.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          </td>
 
-                        <td className="px-4 py-3">
-                        <button
-                          onClick={() => setSelectedTask(task)}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 transition-colors"
-                        >
-                          View
-                        </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => setSelectedTask(task)}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 transition-colors"
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -464,9 +482,7 @@ export default function DashboardPage() {
                         <span className="text-xs text-indigo-400">(owner)</span>
                       )}
                       {/* Remove button: visible to project owner and not shown for the owner themselves */}
-                      {typeof window !== "undefined" &&
-                        project.owner._id === (JSON.parse(localStorage.getItem("user") || "{}") as any).id &&
-                        m._id !== project.owner._id && (
+                      {currentUserId && project.owner._id === currentUserId && m._id !== project.owner._id && (
                           <button
                             onClick={() => handleRemoveMember(m._id)}
                             disabled={removingMemberId === m._id}
@@ -488,27 +504,29 @@ export default function DashboardPage() {
                     </span>
                   ))}
                 </div>
-                <form onSubmit={handleAddMemberById} className="flex gap-2 max-w-sm">
-                  <select
-                    value={selectedUserId}
-                    onChange={(e) => setSelectedUserId(e.target.value)}
-                    className="flex-1 border border-gray-200 text-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                  >
-                    <option value="">{loadingUsers ? "Loading users..." : "Select a user to add"}</option>
-                    {availableUsers.map((u) => (
-                      <option key={u._id} value={u._id}>
-                        {u.name} 
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="submit"
-                    disabled={addingMember || !selectedUserId}
-                    className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                  >
-                    {addingMember ? "..." : "Add"}
-                  </button>
-                </form>
+                {currentUserId && project.owner._id === currentUserId && (
+                    <form onSubmit={handleAddMemberById} className="flex gap-2 max-w-sm">
+                      <select
+                        value={selectedUserId}
+                        onChange={(e) => setSelectedUserId(e.target.value)}
+                        className="flex-1 border border-gray-200 text-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                      >
+                        <option value="">{loadingUsers ? "Loading users..." : "Select a user to add"}</option>
+                        {availableUsers.map((u) => (
+                          <option key={u._id} value={u._id}>
+                            {u.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="submit"
+                        disabled={addingMember || !selectedUserId}
+                        className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                      >
+                        {addingMember ? "..." : "Add"}
+                      </button>
+                    </form>
+                  )}
                 {memberError && <p className="text-sm text-red-500 mt-1">{memberError}</p>}
               </div>
             )}
@@ -521,6 +539,7 @@ export default function DashboardPage() {
         <TaskModal
           task={selectedTask}
           projectMembers={project?.members ?? []}
+          currentUserId={currentUserId}
           onClose={() => { setSelectedTask(null); setNewComment(undefined); }}
           onUpdate={(updated) => {
             setTasks((prev) => prev.map((t) => (t._id === updated._id ? updated : t)));

@@ -34,6 +34,11 @@ export const POST = withAuth(async (req: NextRequest, { params }: Params) => {
   const body = await req.json();
   const { userId } = assignSchema.parse(body);
 
+  // Only the task creator can assign users
+  if (!task.createdBy || task.createdBy.toString() !== authUser.userId) {
+    throw new ApiError(403, "Only the task creator can assign users to this task", "FORBIDDEN");
+  }
+
   if (!mongoose.isValidObjectId(userId)) {
     throw new ApiError(400, "Invalid user ID", "INVALID_ID");
   }

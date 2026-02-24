@@ -8,6 +8,7 @@ import { UserAvatar } from "./UserAvatar";
 interface TaskModalProps {
   task: Task;
   projectMembers: { _id: string; name: string; email: string }[];
+  currentUserId?: string;
   onClose: () => void;
   onUpdate: (task: Task) => void;
   onDelete: (taskId: string) => void;
@@ -17,13 +18,20 @@ interface TaskModalProps {
 
 const STATUSES: Task["status"][] = ["todo", "in_progress", "done", "archived"];
 
-export function TaskModal({ task, projectMembers, onClose, onUpdate, onDelete, newComment, onlineUserIds = new Set() }: TaskModalProps) {
+export function TaskModal({ task, projectMembers, currentUserId, onClose, onUpdate, onDelete, newComment, onlineUserIds = new Set() }: TaskModalProps) {
   const [status, setStatus] = useState<Task["status"]>(task.status);
   const [saving, setSaving] = useState(false);
   const [priority, setPriority] = useState<number>(task.priority);
   const [deleting, setDeleting] = useState(false);
   const [assigneeActionId, setAssigneeActionId] = useState<string | null>(null);
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string>("");
+
+  const isCreator = !!(typeof currentUserId !== "undefined" && currentUserId === task.createdBy._id);
+  const canEdit =
+    !!(
+      typeof currentUserId !== "undefined" &&
+      (currentUserId === task.createdBy._id || task.assignees.some((a) => a._id === currentUserId))
+    );
 
   const availableAssignees = useMemo(() => {
     const assigned = new Set(task.assignees.map((a) => a._id));
@@ -33,6 +41,7 @@ export function TaskModal({ task, projectMembers, onClose, onUpdate, onDelete, n
   }, [projectMembers, task.assignees]);
 
   async function handleStatusChange(newStatus: Task["status"]) {
+    if (!canEdit) return;
     setStatus(newStatus);
     setSaving(true);
     try {
@@ -47,6 +56,7 @@ export function TaskModal({ task, projectMembers, onClose, onUpdate, onDelete, n
   }
 
   async function handlePriorityChange(newPriority: number) {
+    if (!canEdit) return;
     setPriority(newPriority);
     setSaving(true);
     try {
@@ -134,11 +144,12 @@ export function TaskModal({ task, projectMembers, onClose, onUpdate, onDelete, n
                 <button
                   key={s}
                   onClick={() => handleStatusChange(s)}
+                  disabled={!canEdit}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     status === s
                       ? "bg-indigo-600 text-white"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
+                  } ${!canEdit ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   {s.replace("_", " ")}
                 </button>
@@ -154,7 +165,10 @@ export function TaskModal({ task, projectMembers, onClose, onUpdate, onDelete, n
             <select
               value={priority}
               onChange={(e) => handlePriorityChange(Number(e.target.value))}
-              className="px-3 py-1.5 text-gray-700 rounded-lg text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              disabled={!canEdit}
+              className={`px-3 py-1.5 text-gray-700 rounded-lg text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300 ${
+                !canEdit ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
               <option value={1}>Critical</option>
               <option value={2}>High</option>
@@ -184,52 +198,56 @@ export function TaskModal({ task, projectMembers, onClose, onUpdate, onDelete, n
                     {onlineUserIds.has(a._id) && (
                       <span className="text-xs text-emerald-600 font-medium">online</span>
                     )}
-                    <button
-                      onClick={() => handleUnassign(a._id)}
-                      disabled={assigneeActionId === a._id}
-                      title="Unassign"
-                      className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full text-indigo-700/70 hover:bg-indigo-100 disabled:opacity-50 transition-colors"
-                    >
-                      {assigneeActionId === a._id ? (
-                        <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                        </svg>
-                      ) : (
-                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      )}
-                    </button>
+                    {isCreator && (
+                      <button
+                        onClick={() => handleUnassign(a._id)}
+                        disabled={assigneeActionId === a._id}
+                        title="Unassign"
+                        className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full text-indigo-700/70 hover:bg-indigo-100 disabled:opacity-50 transition-colors"
+                      >
+                        {assigneeActionId === a._id ? (
+                          <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )}
+                      </button>
+                    )}
                   </span>
                 ))}
               </div>
             )}
 
-            <div className="flex gap-2">
-              <select
-                value={selectedAssigneeId}
-                onChange={(e) => setSelectedAssigneeId(e.target.value)}
-                className="flex-1 px-3 py-2 text-gray-700 rounded-lg text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-              >
-                <option value="">
-                  {availableAssignees.length === 0 ? "No available members to assign" : "Select member to assign"}
-                </option>
-                {availableAssignees.map((m) => (
-                  <option key={m._id} value={m._id}>
-                    {m.name}
+            {isCreator && (
+              <div className="flex gap-2">
+                <select
+                  value={selectedAssigneeId}
+                  onChange={(e) => setSelectedAssigneeId(e.target.value)}
+                  className="flex-1 px-3 py-2 text-gray-700 rounded-lg text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                >
+                  <option value="">
+                    {availableAssignees.length === 0 ? "No available members to assign" : "Select member to assign"}
                   </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={() => handleAssign(selectedAssigneeId)}
-                disabled={!selectedAssigneeId || assigneeActionId !== null}
-                className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-              >
-                Assign
-              </button>
-            </div>
+                  {availableAssignees.map((m) => (
+                    <option key={m._id} value={m._id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => handleAssign(selectedAssigneeId)}
+                  disabled={!selectedAssigneeId || assigneeActionId !== null}
+                  className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                >
+                  Assign
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Meta info */}
@@ -249,15 +267,17 @@ export function TaskModal({ task, projectMembers, onClose, onUpdate, onDelete, n
           </div>
 
           {/* Delete */}
-          <div className="pt-2 border-t border-gray-100">
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="text-sm text-red-500 hover:text-red-700 disabled:opacity-50 transition-colors"
-            >
-              {deleting ? "Deleting..." : "Delete task"}
-            </button>
-          </div>
+          {currentUserId === task.createdBy._id && (
+            <div className="pt-2 border-t border-gray-100">
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="text-sm text-red-500 hover:text-red-700 disabled:opacity-50 transition-colors"
+              >
+                {deleting ? "Deleting..." : "Delete task"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
