@@ -8,7 +8,16 @@ export const createTaskSchema = z.object({
   status: z.enum(taskStatuses).default("todo"),
   assignees: z.array(z.string()).optional().default([]),
   priority: z.number().int().min(1).max(5).default(3),
-  dueAt: z.string().datetime().optional(),
+  dueAt: z.preprocess((val) => {
+    // Accept ISO strings with timezone offsets or Date objects, normalize to Z-terminated ISO
+    if (typeof val === "string") {
+      const d = new Date(val);
+      if (!isNaN(d.valueOf())) return d.toISOString();
+    } else if (val instanceof Date) {
+      if (!isNaN(val.valueOf())) return val.toISOString();
+    }
+    return val;
+  }, z.string().datetime().optional()),
 });
 
 export const updateTaskSchema = z.object({
@@ -17,7 +26,15 @@ export const updateTaskSchema = z.object({
   status: z.enum(taskStatuses).optional(),
   assignees: z.array(z.string()).optional(),
   priority: z.number().int().min(1).max(5).optional(),
-  dueAt: z.string().datetime().optional().nullable(),
+  dueAt: z.preprocess((val) => {
+    if (typeof val === "string") {
+      const d = new Date(val);
+      if (!isNaN(d.valueOf())) return d.toISOString();
+    } else if (val instanceof Date) {
+      if (!isNaN(val.valueOf())) return val.toISOString();
+    }
+    return val;
+  }, z.string().datetime().optional().nullable()),
 });
 
 export const assignSchema = z.object({

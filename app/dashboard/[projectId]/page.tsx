@@ -233,58 +233,65 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <TaskBoard tasks={displayedTasks} onTaskClick={setSelectedTask} loading={loading} />
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left: main content */}
+          <div className="flex-1">
+            <TaskBoard tasks={displayedTasks} onTaskClick={setSelectedTask} loading={loading} />
 
-        {nextCursor && !searchResults && (
-          <div className="text-center mt-6">
-            <button
-              onClick={loadMore}
-              className="px-5 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
-            >
-              Load more tasks
-            </button>
-          </div>
-        )}
-
-        {/* Add member section */}
-        {project && (
-          <div className="mt-8 bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">Project Members</h2>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {project.members.map((m) => (
-                <span
-                  key={m._id}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-full text-sm"
+            {nextCursor && !searchResults && (
+              <div className="text-center mt-6">
+                <button
+                  onClick={loadMore}
+                  className="px-5 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
                 >
-                  <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center">
-                    {m.name.charAt(0).toUpperCase()}
-                  </span>
-                  {m.name}
-                  {m._id === project.owner._id && (
-                    <span className="text-xs text-indigo-400">(owner)</span>
-                  )}
-                </span>
-              ))}
-            </div>
-            <form onSubmit={handleAddMember} className="flex gap-2 max-w-sm">
-              <input
-                type="email"
-                placeholder="Add member by email"
-                value={addMemberEmail}
-                onChange={(e) => setAddMemberEmail(e.target.value)}
-                className="flex-1 border border-gray-200 text-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-              />
-              <button
-                type="submit"
-                disabled={addingMember}
-                className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-              >
-                {addingMember ? "..." : "Add"}
-              </button>
-            </form>
-            {memberError && <p className="text-sm text-red-500 mt-1">{memberError}</p>}
+                  Load more tasks
+                </button>
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Right: sidebar */}
+          <aside className="w-full lg:w-80">
+            {project && (
+              <div className="lg:mt-0 mt-6 bg-white rounded-xl border border-gray-200 p-5">
+                <h2 className="text-sm font-semibold text-gray-700 mb-3">Project Members</h2>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {project.members.map((m) => (
+                    <span
+                      key={m._id}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-full text-sm"
+                    >
+                      <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center">
+                        {m.name.charAt(0).toUpperCase()}
+                      </span>
+                      {m.name}
+                      {m._id === project.owner._id && (
+                        <span className="text-xs text-indigo-400">(owner)</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+                <form onSubmit={handleAddMember} className="flex gap-2 max-w-sm">
+                  <input
+                    type="email"
+                    placeholder="Add member by email"
+                    value={addMemberEmail}
+                    onChange={(e) => setAddMemberEmail(e.target.value)}
+                    className="flex-1 border border-gray-200 text-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  />
+                  <button
+                    type="submit"
+                    disabled={addingMember}
+                    className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                  >
+                    {addingMember ? "..." : "Add"}
+                  </button>
+                </form>
+                {memberError && <p className="text-sm text-red-500 mt-1">{memberError}</p>}
+              </div>
+            )}
+          </aside>
+        </div>
       </main>
 
       {/* Task detail modal */}
