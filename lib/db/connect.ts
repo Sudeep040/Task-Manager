@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import "@/lib/db/models/Task";
+import "@/lib/db/models/Comment";
 
 function getMongoUri(): string {
   const uri = process.env.MONGO_URI;
@@ -30,5 +32,7 @@ export async function connectDB(): Promise<typeof mongoose> {
   }
 
   cached.conn = await cached.promise;
+  // Ensure all schema-defined indexes exist in the DB (no-op after first run)
+  await cached.conn.syncIndexes();
   return cached.conn;
 }

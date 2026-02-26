@@ -38,10 +38,11 @@ export const GET = withAuth(async (req: NextRequest) => {
     $text: { $search: q },
     projectId: { $in: projectFilter },
   })
-    .select({ score: { $meta: "textScore" }, title: 1, description: 1, status: 1, projectId: 1, assignees: 1 })
+    .select({ score: { $meta: "textScore" }, title: 1, description: 1, status: 1, projectId: 1, assignees: 1, createdBy: 1, priority: 1, dueAt: 1, updatedAt: 1, commentCount: 1 })
     .sort({ score: { $meta: "textScore" } })
     .limit(limit)
     .populate("assignees", "name email")
+    .populate("createdBy", "name email")
     .lean();
 
   const commentResults = await Comment.find({

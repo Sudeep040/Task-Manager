@@ -21,9 +21,8 @@ const CommentSchema = new Schema<IComment>(
 CommentSchema.index({ taskId: 1, createdAt: -1 });
 CommentSchema.index({ authorId: 1 });
 
-// Text index for global search
-// Search is filtered by taskId set; include `taskId` for faster scoped text search
-CommentSchema.index({ taskId: 1, body: "text" });
+// Text index for global search across comment body
+CommentSchema.index({ body: "text" });
 
 // Cursor pagination uses `{ createdAt: -1, _id: -1 }` sort
 CommentSchema.index({ taskId: 1, createdAt: -1, _id: -1 });
