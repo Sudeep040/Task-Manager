@@ -4,11 +4,9 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { api, Task, Project, Comment } from "@/lib/api-client";
-// TaskBoard replaced by table view on dashboard; keep import removed.
 import { TaskModal } from "@/components/TaskModal";
 import { CreateTaskModal } from "@/components/CreateTaskModal";
-import { PresenceBar } from "@/components/PresenceBar";
-import { UserAvatar } from "@/components/UserAvatar";
+ import { UserAvatar } from "@/components/UserAvatar";
 import { useSocket } from "@/hooks/useSocket";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -345,7 +343,7 @@ export default function DashboardPage() {
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Left: main content */}
           <div className="flex-1">
-            {/* Tasks table (replaces TaskBoard) */}
+            {/* Tasks table */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
