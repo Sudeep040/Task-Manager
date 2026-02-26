@@ -34,12 +34,6 @@ export default function HomePage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<{ id: string; name: string; email: string } | null>(null);
-  const [showAddTask, setShowAddTask] = useState(false);
-  const [addForm, setAddForm] = useState({ projectId: "", title: "", description: "", priority: 3 });
-  const [addAssigneeId, setAddAssigneeId] = useState<string>("");
-  const [addDueAt, setAddDueAt] = useState<string>("");
-  const [adding, setAdding] = useState(false);
-  const [addError, setAddError] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [selectedTask, setSelectedTask] = useState<TaskWithProject | null>(null);
 
@@ -64,34 +58,6 @@ export default function HomePage() {
       router.push("/login");
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleAddTask(e: React.FormEvent) {
-    e.preventDefault();
-    setAddError("");
-    if (!addForm.projectId) { setAddError("Please select a project"); return; }
-    if (!addForm.title.trim()) { setAddError("Title is required"); return; }
-    setAdding(true);
-    try {
-      const task = await api.tasks.create(addForm.projectId, {
-        title: addForm.title.trim(),
-        description: addForm.description.trim() || undefined,
-        priority: addForm.priority,
-        assignees: addAssigneeId ? [addAssigneeId] : [],
-        dueAt: addDueAt || undefined,
-      });
-      const project = projects.find((p) => p._id === addForm.projectId);
-      const taskWithProject: TaskWithProject = { ...task, projectName: project?.name ?? "Unknown" };
-      setTasks((prev) => [taskWithProject, ...prev]);
-      setAddForm({ projectId: "", title: "", description: "", priority: 3 });
-      setAddAssigneeId("");
-      setAddDueAt("");
-      setShowAddTask(false);
-    } catch (err) {
-      setAddError(err instanceof Error ? err.message : "Failed to create task");
-    } finally {
-      setAdding(false);
     }
   }
 
@@ -306,148 +272,6 @@ export default function HomePage() {
           </div>
         )}
       </main>
-
-      {/* Add Task Modal */}
-      {showAddTask && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">New Task</h2>
-              <button onClick={() => setShowAddTask(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleAddTask} className="p-6 space-y-4">
-              {addError && (
-                <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{addError}</div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Project <span className="text-red-500">*</span>
-                </label>
-                {projects.length === 0 ? (
-                  <p className="text-sm text-gray-400">
-                    No projects found.{" "}
-                    <Link href="/projects" className="text-indigo-600 hover:underline">Create one first.</Link>
-                  </p>
-                ) : (
-                  <select
-                    value={addForm.projectId}
-                    onChange={(e) => setAddForm({ ...addForm, projectId: e.target.value })}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                  >
-                    <option value="">Select a project</option>
-                    {projects.map((p) => (
-                      <option key={p._id} value={p._id}>{p.name}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              {/* Assignees */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assignees <span className="text-gray-400 font-normal">(optional)</span>
-                </label>
-                {addForm.projectId ? (
-                  projects.find((p) => p._id === addForm.projectId)?.members?.length === 0 ? (
-                    <p className="text-sm text-gray-400">No project members found.</p>
-                  ) : (
-                    <select
-                      value={addAssigneeId}
-                      onChange={(e) => setAddAssigneeId(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                    >
-                      <option value="">Unassigned</option>
-                      {projects
-                        .find((p) => p._id === addForm.projectId)
-                        ?.members?.map((m) => (
-                          <option key={m._id} value={m._id}>
-                            {m.name}
-                          </option>
-                        ))}
-                    </select>
-                  )
-                ) : (
-                  <p className="text-sm text-gray-400">Select a project to choose assignees.</p>
-                )}
-              </div>
-
-              {/* Due date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Due date</label>
-                <input
-                  type="date"
-                  value={addDueAt}
-                  onChange={(e) => setAddDueAt(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  autoFocus
-                  value={addForm.title}
-                  onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
-                  placeholder="Task title"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  rows={3}
-                  value={addForm.description}
-                  onChange={(e) => setAddForm({ ...addForm, description: e.target.value })}
-                  placeholder="Optional description..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                <select
-                  value={addForm.priority}
-                  onChange={(e) => setAddForm({ ...addForm, priority: Number(e.target.value) })}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                >
-                  <option value={1}>Critical</option>
-                  <option value={2}>High</option>
-                  <option value={3}>Medium</option>
-                  <option value={4}>Low</option>
-                  <option value={5}>Minimal</option>
-                </select>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddTask(false)}
-                  className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={adding || projects.length === 0}
-                  className="flex-1 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                >
-                  {adding ? "Creating..." : "Create Task"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Task detail modal (home page) */}
       {selectedTask && (
