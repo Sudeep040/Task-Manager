@@ -35,7 +35,12 @@ export const POST = withAuth(async (req: NextRequest, { params }: Params) => {
   project.members.push(newMember._id);
   await project.save();
 
-  const populated = await project.populate("members", "name email");
+  // Re-fetch with full population so the client always receives
+  // the same shape as other project endpoints (owner + members populated)
+  const populated = await Project.findById(projectId)
+    .populate("owner", "name email")
+    .populate("members", "name email");
+
   return apiSuccess(populated);
 });
 
