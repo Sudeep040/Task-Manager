@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { extractBearerToken } from "@/lib/auth/jwt";
 import { jwtVerify } from "jose";
 
-const PUBLIC_API_ROUTES = ["/api/auth/register", "/api/auth/login"];
+const PUBLIC_API_ROUTES = ["/api/auth/register", "/api/auth/login", "/api/auth/google"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
