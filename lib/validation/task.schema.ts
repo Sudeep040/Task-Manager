@@ -2,6 +2,14 @@ import { z } from "zod";
 
 export const taskStatuses = ["todo", "in_progress", "done", "archived"] as const;
 
+const attachmentSchema = z.object({
+  url: z.string().url(),
+  key: z.string().min(1),
+  filename: z.string().min(1),
+  fileType: z.enum(["image", "video"]),
+  fileSize: z.number().positive(),
+});
+
 export const createTaskSchema = z.object({
   title: z.string().min(1, "Title is required").max(200).trim(),
   description: z.string().max(5000).trim().optional(),
@@ -9,6 +17,7 @@ export const createTaskSchema = z.object({
   assignees: z.array(z.string()).optional().default([]),
   priority: z.number().int().min(1).max(5).default(3),
   dueAt: z.string().optional(),
+  attachments: z.array(attachmentSchema).optional().default([]),
 });
 
 export const updateTaskSchema = z.object({

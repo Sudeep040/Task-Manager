@@ -118,6 +118,85 @@ export const api = {
   },
 };
 
+// Upload API — works with XHR so callers can track upload progress
+export const uploadApi = {
+  /**
+   * Get presigned URL(s) for uploading a file to S3.
+   * Returns either a single URL (< 20 MB) or multipart info (>= 20 MB).
+   */
+  initUpload: async (params: {
+    filename: string;
+    contentType: string;
+    fileSize: number;
+  }): Promise<UploadInitResponse> => {
+    const token = getToken();
+    const res = await fetch("/api/upload/init", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(params),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.error?.message ?? "Upload init failed");
+    return json.data as UploadInitResponse;
+  },
+
+  /**
+   * Complete a multipart S3 upload after all parts have been sent.
+   */
+  completeMultipart: async (params: {
+    key: string;
+    uploadId: string;
+    parts: { PartNumber: number; ETag: string }[];
+  }): Promise<{ publicUrl: string; key: string }> => {
+    const token = getToken();
+    const res = await fetch("/api/upload/complete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(params),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.error?.message ?? "Upload complete failed");
+    return json.data as { publicUrl: string; key: string };
+  },
+
+  /**
+   * Upload a chunk (single or multipart part) via XHR so we get progress events.
+   * Returns the ETag header value from the S3 response (needed for multipart completion).
+   */
+  uploadChunk: (
+    url: string,
+    data: Blob,
+    onProgress?: (percent: number) => void
+  ): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", url);
+      // S3 presigned PUTs must NOT have Authorization header
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable && onProgress) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      });
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(xhr.getResponseHeader("ETag") ?? "");
+        } else {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      });
+      xhr.addEventListener("error", () => reject(new Error("Network error during upload")));
+      xhr.addEventListener("abort", () => reject(new Error("Upload aborted")));
+      xhr.send(data);
+    });
+  },
+};
+
 // Lightweight local types for the client
 export interface Project {
   _id: string;
@@ -128,6 +207,35 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface Attachment {
+  url: string;
+  key: string;
+  filename: string;
+  fileType: "image" | "video";
+  fileSize: number;
+}
+
+export type UploadInitResponse =
+  | {
+      type: "single";
+      uploadUrl: string;
+      key: string;
+      publicUrl: string;
+      fileType: "image" | "video";
+      filename: string;
+      fileSize: number;
+    }
+  | {
+      type: "multipart";
+      uploadId: string;
+      key: string;
+      parts: { partNumber: number; uploadUrl: string; start: number; end: number }[];
+      publicUrl: string;
+      fileType: "image" | "video";
+      filename: string;
+      fileSize: number;
+    };
 
 export interface Task {
   _id: string;
@@ -140,6 +248,7 @@ export interface Task {
   dueAt?: string;
   commentCount: number;
   lastCommentAt?: string;
+  attachments: Attachment[];
   createdBy: { _id: string; name: string; email: string };
   createdAt: string;
   updatedAt: string;
@@ -156,6 +265,7 @@ export interface CreateTaskBody {
   assignees?: string[];
   priority?: number;
   dueAt?: string;
+  attachments?: Attachment[];
 }
 
 export interface UpdateTaskBody {

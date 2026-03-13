@@ -2,6 +2,14 @@ import mongoose, { Document, Model, Schema } from "mongoose";
 
 export type TaskStatus = "todo" | "in_progress" | "done" | "archived";
 
+export interface IAttachment {
+  url: string;
+  key: string;
+  filename: string;
+  fileType: "image" | "video";
+  fileSize: number;
+}
+
 export interface ITask extends Document {
   _id: mongoose.Types.ObjectId;
   projectId: mongoose.Types.ObjectId;
@@ -12,6 +20,7 @@ export interface ITask extends Document {
   priority: number;
   commentCount: number;
   lastCommentAt?: Date;
+  attachments: IAttachment[];
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -32,6 +41,18 @@ const TaskSchema = new Schema<ITask>(
     commentCount: { type: Number, default: 0 },
     lastCommentAt: { type: Date },
     dueAt: { type: Date },
+    attachments: {
+      type: [
+        {
+          url: { type: String, required: true },
+          key: { type: String, required: true },
+          filename: { type: String, required: true },
+          fileType: { type: String, enum: ["image", "video"], required: true },
+          fileSize: { type: Number, required: true },
+        },
+      ],
+      default: [],
+    },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   { timestamps: true }

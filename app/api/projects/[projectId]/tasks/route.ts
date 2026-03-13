@@ -40,6 +40,7 @@ export const POST = withAuth(async (req: NextRequest, { params }: Params) => {
     assignees,
     priority: data.priority,
     dueAt,
+    attachments: data.attachments ?? [],
     projectId,
     createdBy: user.userId,
   });
